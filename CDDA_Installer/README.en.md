@@ -28,7 +28,7 @@ or: `python cdda_installer.pyw`
 ### [Library] tab — first screen
 **All CDDA and CDBN installs** appear in one unified table (game / version / channel / install date).
 - **Double-click** or **▶ Run** : launch that version
-- **🧩 Mods** : open the mod manager for the selected version (see below)
+- **🧩 Content** : open the content manager for the selected version (mods/soundpacks/tilesets/fonts, see below)
 - **Open folder** : open the install folder in Explorer
 - **🗑 Delete** : permanently delete the version + its saves
 
@@ -41,21 +41,28 @@ or: `python cdda_installer.pyw`
 
 Installing extracts to `base-folder/<version-tag>/`. Already-installed versions show the button as **Installed ✓**.
 
-## Mod Management
+## Content Management (mods / soundpacks / tilesets / fonts)
 
-In the Library tab, select a version and press **🧩 Mods** to open the mod manager.
-**Only mods added with this tool** appear in the list (the game's bundled mods are excluded).
+In the Library tab, select a version and press **🧩 Content** to open a window with 4 tabs.
+Each tab shows **only items added with this tool** (the game's bundled content is excluded).
 
-- **🌐 Add from URL** : enter a GitHub repo URL or a direct zip link → download & install.
-  A GitHub URL (`https://github.com/user/repo`) is automatically converted to the default-branch zip.
-- **➕ Add zip** : pick a local mod zip to add (handles multiple files / multiple mods at once).
+| Resource | Install location | Identified by |
+|---|---|---|
+| Mods | `data/mods/<folder>/` | `modinfo.json` |
+| Soundpacks | `data/sound/<folder>/` | `soundpack.txt` |
+| Tilesets | `gfx/<folder>/` | `tileset.txt` |
+| Fonts | `data/font/*.ttf .otf .ttc` | individual files |
+
+- **🌐 Add from URL** : a GitHub repo URL or a direct zip (fonts also accept a `.ttf` link) → download & install.
+- **➕ Add zip / Add file** : pick a local zip (the Fonts tab also accepts font files).
 - **🗑 Remove** / **Open folder**
 
-When adding, the tool finds folders containing a `modinfo.json` inside the zip/repo, copies them to `data/mods/`,
-and leaves a `.cdda_added` marker file in each so they can be distinguished in the list.
+When adding, the tool finds folders containing the identifier file (`modinfo.json`/`soundpack.txt`/`tileset.txt`),
+or font files for the Fonts tab, copies them to the target folder, and leaves a `.cdda_added` marker to
+distinguish them from bundled content.
 
-> CDDA has no central mod repository/API, so a "browse a list and pick" approach isn't possible.
-> Instead you fetch via a GitHub URL or zip link (most mods live on GitHub).
+> CDDA has no central content repository/API, so a "browse a list and pick" approach isn't possible.
+> Instead you fetch via a GitHub URL or zip/file link (most content lives on GitHub).
 
 ## Per-version independent saves
 

@@ -177,6 +177,22 @@ STRINGS = {
         "mod_no_folder_title": "폴더 없음",
         "mod_no_folder_msg": "data/mods 폴더가 아직 없습니다.",
         "mod_open_failed": "열기 실패",
+        # 콘텐츠 관리 (모드/사운드/타일셋/폰트 통합)
+        "btn_content": "🧩 콘텐츠",
+        "content_title": "콘텐츠 관리 — {name}",
+        "res_mods": "모드",
+        "res_sound": "사운드팩",
+        "res_tiles": "타일셋",
+        "res_fonts": "폰트",
+        "res_subtitle": "이 도구로 추가한 항목만 표시됩니다. (게임 기본 번들은 제외)",
+        "res_add_file": "➕ 파일 추가",
+        "res_add_title": "추가할 파일 선택",
+        "res_font_filter": "폰트 파일",
+        "res_no_dir_err": "이 버전에서 대상 폴더를 찾지 못했습니다.",
+        "res_no_dir": "대상 폴더를 찾지 못했습니다.",
+        "res_none_msg": "추가할 항목을 찾지 못했습니다.",
+        "res_zip_only": "이 항목은 zip 으로만 추가할 수 있습니다.",
+        "res_count": "{n}개  |  {dir}",
     },
     "en": {
         "app_title": "Cataclysm Installer & Version Manager (CDDA / CDBN)",
@@ -290,6 +306,22 @@ STRINGS = {
         "mod_no_folder_title": "No folder",
         "mod_no_folder_msg": "The data/mods folder doesn't exist yet.",
         "mod_open_failed": "Open failed",
+        # Content manager (mods/soundpacks/tilesets/fonts)
+        "btn_content": "🧩 Content",
+        "content_title": "Content — {name}",
+        "res_mods": "Mods",
+        "res_sound": "Soundpacks",
+        "res_tiles": "Tilesets",
+        "res_fonts": "Fonts",
+        "res_subtitle": "Only items added with this tool are shown. (bundled content excluded)",
+        "res_add_file": "➕ Add file",
+        "res_add_title": "Select file(s) to add",
+        "res_font_filter": "Font files",
+        "res_no_dir_err": "Couldn't find the target folder for this version.",
+        "res_no_dir": "Target folder not found.",
+        "res_none_msg": "No installable item found.",
+        "res_zip_only": "This type can only be added from a zip.",
+        "res_count": "{n} items  |  {dir}",
     },
 }
 
@@ -463,25 +495,22 @@ def launch_game(exe: str):
 
 
 # ---------------------------------------------------------------------------
-# 모드 관리
+# 콘텐츠 관리 (모드 / 사운드팩 / 타일셋 / 폰트)
 # ---------------------------------------------------------------------------
-def find_mods_dir(version: dict, create: bool = False):
-    """선택한 버전의 data/mods 폴더 경로를 찾는다(없으면 None)."""
-    cands = []
-    if version.get("exe"):
-        cands.append(os.path.join(os.path.dirname(version["exe"]), "data", "mods"))
-    cands.append(os.path.join(version["path"], "data", "mods"))
-    for c in cands:
-        if os.path.isdir(c):
-            return c
-    # 실행파일 위치가 예상과 다를 수 있으니 폴더 트리에서 data/mods 탐색
-    for dirpath, dirs, _ in os.walk(version["path"]):
-        if os.path.basename(dirpath) == "data" and "mods" in dirs:
-            return os.path.join(dirpath, "mods")
-    if create and cands:
-        os.makedirs(cands[0], exist_ok=True)
-        return cands[0]
-    return None
+# 각 자원의 게임 폴더 내 위치와 식별 방식.
+#   kind="folder": 하위 폴더 단위, id_file 로 식별 (modinfo.json / soundpack.txt / tileset.txt)
+#   kind="files" : 개별 파일 단위 (폰트 .ttf/.otf/.ttc)
+RESOURCE_SPECS = {
+    "mods":  {"label_key": "res_mods",  "dirs": [("data", "mods")],
+              "id_file": "modinfo.json", "kind": "folder"},
+    "sound": {"label_key": "res_sound", "dirs": [("data", "sound"), ("sound",)],
+              "id_file": "soundpack.txt", "kind": "folder"},
+    "tiles": {"label_key": "res_tiles", "dirs": [("gfx",)],
+              "id_file": "tileset.txt", "kind": "folder"},
+    "fonts": {"label_key": "res_fonts", "dirs": [("data", "font"), ("font",)],
+              "id_file": None, "kind": "files", "exts": (".ttf", ".ttc", ".otf")},
+}
+FILE_MARKER_SUFFIX = ".cdda_added"  # 폰트 등 파일 자원은 옆에 마커 파일을 둔다
 
 
 def read_mod_name(mod_dir: str):
@@ -503,22 +532,81 @@ def read_mod_name(mod_dir: str):
     return os.path.basename(mod_dir)
 
 
-def scan_mods(mods_dir: str, only_added: bool = True):
-    """data/mods 아래 모드 폴더 목록을 반환.
-    only_added=True 면 이 도구로 추가한 모드(MOD_MARKER 보유)만 반환한다."""
+def read_txt_field(path: str, key: str = "NAME"):
+    """tileset.txt / soundpack.txt 의 'KEY: value' 줄에서 값을 읽는다."""
+    try:
+        for line in open(path, encoding="utf-8", errors="ignore"):
+            line = line.strip()
+            if not line or line.startswith("#") or ":" not in line:
+                continue
+            k, v = line.split(":", 1)
+            if k.strip().upper() == key.upper():
+                return v.strip()
+    except Exception:
+        pass
+    return None
+
+
+def read_resource_name(folder: str, spec: dict):
+    """폴더형 자원의 표시 이름. id_file 없거나 못 읽으면 None(=자원 아님)."""
+    idf = spec["id_file"]
+    full = os.path.join(folder, idf)
+    if not os.path.isfile(full):
+        return None
+    if idf.endswith(".json"):
+        return read_mod_name(folder)
+    name = read_txt_field(full, "NAME") or read_txt_field(full, "VIEW")
+    return name or os.path.basename(folder)
+
+
+def find_resource_dir(version: dict, spec: dict, create: bool = False):
+    """선택한 버전에서 자원 폴더(data/mods, gfx, data/font 등) 경로를 찾는다."""
+    roots = []
+    if version.get("exe"):
+        roots.append(os.path.dirname(version["exe"]))
+    roots.append(version["path"])
+    cands = [os.path.join(r, *parts) for r in roots for parts in spec["dirs"]]
+    for c in cands:
+        if os.path.isdir(c):
+            return c
+    # 폴더 트리에서 접미 경로가 일치하는 디렉터리 탐색 (예: ...\data\mods)
+    suffix = os.path.join(*spec["dirs"][0])
+    for dirpath, _, _ in os.walk(version["path"]):
+        if os.path.normpath(dirpath).endswith(os.sep + suffix) or \
+           os.path.normpath(dirpath).endswith(suffix):
+            return dirpath
+    if create and cands:
+        os.makedirs(cands[0], exist_ok=True)
+        return cands[0]
+    return None
+
+
+def scan_resources(rdir: str, spec: dict, only_added: bool = True):
+    """자원 목록 반환. only_added=True 면 이 도구로 추가한 것만(마커 보유)."""
     out = []
-    if not mods_dir or not os.path.isdir(mods_dir):
+    if not rdir or not os.path.isdir(rdir):
         return out
-    for entry in sorted(os.listdir(mods_dir), key=str.lower):
-        p = os.path.join(mods_dir, entry)
-        if not os.path.isdir(p):
-            continue
-        if only_added and not os.path.isfile(os.path.join(p, MOD_MARKER)):
-            continue  # 게임 번들 모드는 가린다
-        name = read_mod_name(p)
-        if name is None:
-            continue  # modinfo.json 없으면 모드 아님
-        out.append({"folder": entry, "path": p, "name": name})
+    if spec["kind"] == "folder":
+        for entry in sorted(os.listdir(rdir), key=str.lower):
+            p = os.path.join(rdir, entry)
+            if not os.path.isdir(p):
+                continue
+            if only_added and not os.path.isfile(os.path.join(p, MOD_MARKER)):
+                continue
+            name = read_resource_name(p, spec)
+            if name is None:
+                continue
+            out.append({"name": name, "folder": entry, "path": p})
+    else:  # files (폰트)
+        for entry in sorted(os.listdir(rdir), key=str.lower):
+            p = os.path.join(rdir, entry)
+            if not os.path.isfile(p):
+                continue
+            if os.path.splitext(entry)[1].lower() not in spec["exts"]:
+                continue
+            if only_added and not os.path.isfile(p + FILE_MARKER_SUFFIX):
+                continue
+            out.append({"name": entry, "folder": entry, "path": p})
     return out
 
 
@@ -915,8 +1003,8 @@ class App:
         btns.pack(fill="x")
         self.reg(ttk.Button(btns, text=t("btn_run"), command=self.run_selected),
                  "btn_run").pack(side="left", ipadx=10)
-        self.reg(ttk.Button(btns, text=t("btn_mods"), command=self.manage_mods),
-                 "btn_mods").pack(side="left", padx=6)
+        self.reg(ttk.Button(btns, text=t("btn_content"), command=self.manage_content),
+                 "btn_content").pack(side="left", padx=6)
         self.reg(ttk.Button(btns, text=t("btn_open_folder"), command=self.open_folder),
                  "btn_open_folder").pack(side="left")
         self.reg(ttk.Button(btns, text=t("btn_delete"), command=self.delete_selected),
@@ -991,126 +1079,159 @@ class App:
         except Exception as e:
             messagebox.showerror(t("delete_failed"), str(e))
 
-    def manage_mods(self):
+    def manage_content(self):
         v = self._selected_version()
         if not v:
             messagebox.showinfo(t("need_select_title"), t("need_mod_select")); return
-        ModWindow(self.root, v)
+        ContentWindow(self.root, v)
 
 
 # ---------------------------------------------------------------------------
-# 모드 관리 창  (열린 동안 메인 창이 grab 되므로 언어는 열 때 기준으로 고정)
+# 콘텐츠 관리 창  (모드/사운드/타일셋/폰트 탭. grab 모달이라 언어는 열 때 기준 고정)
 # ---------------------------------------------------------------------------
-class ModWindow:
+class ContentWindow:
     def __init__(self, master, version):
         self.version = version
-        self.mods_dir = find_mods_dir(version)
-        self._mods = []
-
         win = tk.Toplevel(master)
         self.win = win
-        win.title(t("mod_title", name=version["name"]))
-        win.geometry("540x460")
-        win.minsize(460, 380)
+        win.title(t("content_title", name=version["name"]))
+        win.geometry("600x500")
+        win.minsize(520, 420)
         win.transient(master)
         win.grab_set()
 
-        f = ttk.Frame(win, padding=10)
-        f.pack(fill="both", expand=True)
-        ttk.Label(f, text=t("mod_header"), font=("Segoe UI", 13, "bold")).pack(anchor="w")
-        ttk.Label(f, text=t("mod_subtitle"), foreground="#666").pack(anchor="w", pady=(0, 8))
+        nb = ttk.Notebook(win)
+        nb.pack(fill="both", expand=True, padx=8, pady=(8, 4))
+        for key in ("mods", "sound", "tiles", "fonts"):
+            spec = RESOURCE_SPECS[key]
+            frame = ttk.Frame(nb, padding=10)
+            nb.add(frame, text=t(spec["label_key"]))
+            ResourceTab(self, frame, spec)
+
+        ttk.Button(win, text=t("mod_btn_close"), command=win.destroy).pack(pady=(0, 8))
+
+
+class ResourceTab:
+    """모드/사운드/타일셋/폰트 한 종류를 다루는 탭. spec 으로 동작이 결정된다."""
+    def __init__(self, owner, parent, spec):
+        self.win = owner.win
+        self.version = owner.version
+        self.spec = spec
+        self.rdir = find_resource_dir(self.version, spec)
+        self._items = []
+
+        ttk.Label(parent, text=t("res_subtitle"), foreground="#666").pack(anchor="w", pady=(0, 6))
 
         cols = ("name", "folder")
-        self.tree = ttk.Treeview(f, columns=cols, show="headings", height=12)
+        self.tree = ttk.Treeview(parent, columns=cols, show="headings", height=10)
         self.tree.heading("name", text=t("mod_col_name"))
         self.tree.heading("folder", text=t("mod_col_folder"))
         self.tree.column("name", width=300)
-        self.tree.column("folder", width=180)
+        self.tree.column("folder", width=200)
         self.tree.pack(fill="both", expand=True, pady=4)
 
-        self.status = ttk.Label(f, text="", foreground="#666")
+        self.status = ttk.Label(parent, text="", foreground="#666")
         self.status.pack(anchor="w", pady=(2, 6))
 
-        btns = ttk.Frame(f)
+        btns = ttk.Frame(parent)
         btns.pack(fill="x")
-        ttk.Button(btns, text=t("mod_btn_url"), command=self.add_mod_url).pack(side="left")
-        ttk.Button(btns, text=t("mod_btn_zip"), command=self.add_mod).pack(side="left", padx=6)
-        ttk.Button(btns, text=t("mod_btn_remove"), command=self.remove_mod).pack(side="left")
-        ttk.Button(btns, text=t("mod_btn_open"), command=self.open_mods_folder).pack(side="left", padx=6)
-        ttk.Button(btns, text=t("mod_btn_close"), command=win.destroy).pack(side="right")
+        ttk.Button(btns, text=t("mod_btn_url"), command=self.add_url).pack(side="left")
+        add_label = t("res_add_file") if spec["kind"] == "files" else t("mod_btn_zip")
+        ttk.Button(btns, text=add_label, command=self.add_local).pack(side="left", padx=6)
+        ttk.Button(btns, text=t("mod_btn_remove"), command=self.remove).pack(side="left")
+        ttk.Button(btns, text=t("mod_btn_open"), command=self.open_dir).pack(side="left", padx=6)
 
         self.refresh()
 
+    # ---- 공통 ----
     def _set_status(self, text, color="#666"):
         self.win.after(0, lambda: self.status.config(text=text, foreground=color))
+
+    def _ensure_dir(self):
+        if not self.rdir:
+            self.rdir = find_resource_dir(self.version, self.spec, create=True)
+        if not self.rdir:
+            messagebox.showerror(t("mod_err_title"), t("res_no_dir_err"), parent=self.win)
+            return False
+        return True
 
     def refresh(self):
         for i in self.tree.get_children():
             self.tree.delete(i)
-        self.mods_dir = find_mods_dir(self.version) or self.mods_dir
-        self._mods = scan_mods(self.mods_dir)
-        for m in self._mods:
-            self.tree.insert("", "end", values=(m["name"], m["folder"]))
-        if self.mods_dir:
-            self.status.config(text=t("mod_count", n=len(self._mods), dir=self.mods_dir),
-                               foreground="#666")
+        self.rdir = find_resource_dir(self.version, self.spec) or self.rdir
+        self._items = scan_resources(self.rdir, self.spec)
+        for it in self._items:
+            self.tree.insert("", "end", values=(it["name"], it["folder"]))
+        if self.rdir:
+            self.status.config(text=t("res_count", n=len(self._items), dir=self.rdir), foreground="#666")
         else:
-            self.status.config(text=t("mod_no_dir"), foreground="red")
+            self.status.config(text=t("res_no_dir"), foreground="red")
 
-    def _selected_mod(self):
+    def _selected(self):
         sel = self.tree.selection()
         if not sel:
             return None
         idx = self.tree.index(sel[0])
-        return self._mods[idx] if 0 <= idx < len(self._mods) else None
+        return self._items[idx] if 0 <= idx < len(self._items) else None
 
-    def add_mod(self):
-        if not self.mods_dir:
-            self.mods_dir = find_mods_dir(self.version, create=True)
-        if not self.mods_dir:
-            messagebox.showerror(t("mod_err_title"), t("mod_no_dir_err"), parent=self.win); return
-        zips = filedialog.askopenfilenames(parent=self.win, title=t("mod_zip_title"),
-                filetypes=[(t("mod_zip_filter"), "*.zip"), (t("all_files"), "*.*")])
-        if not zips:
+    # ---- 추가 (로컬 파일/zip) ----
+    def add_local(self):
+        if not self._ensure_dir():
+            return
+        if self.spec["kind"] == "files":
+            pat = " ".join("*" + e for e in self.spec["exts"])
+            ft = [(t("res_font_filter"), pat), (t("mod_zip_filter"), "*.zip"), (t("all_files"), "*.*")]
+        else:
+            ft = [(t("mod_zip_filter"), "*.zip"), (t("all_files"), "*.*")]
+        files = filedialog.askopenfilenames(parent=self.win, title=t("res_add_title"), filetypes=ft)
+        if not files:
             return
         added = 0
-        for zp in zips:
+        for fp in files:
             try:
-                with zipfile.ZipFile(zp) as zf:
-                    added += self._install_mod_archive(zf, os.path.splitext(os.path.basename(zp))[0])
+                if fp.lower().endswith(".zip"):
+                    with open(fp, "rb") as fh:
+                        added += self._copy_zip(fh.read(),
+                                                os.path.splitext(os.path.basename(fp))[0])
+                elif self.spec["kind"] == "files":
+                    added += self._copy_file(fp)
+                else:
+                    messagebox.showwarning(t("mod_add_failed"), t("res_zip_only"), parent=self.win)
             except Exception as e:
-                messagebox.showerror(t("mod_add_failed"), f"{os.path.basename(zp)}:\n{e}", parent=self.win)
+                messagebox.showerror(t("mod_add_failed"), f"{os.path.basename(fp)}:\n{e}", parent=self.win)
         if added:
             messagebox.showinfo(t("done_title"), t("mod_added_n", n=added), parent=self.win)
         self.refresh()
 
-    def add_mod_url(self):
+    # ---- 추가 (URL) ----
+    def add_url(self):
         url = simpledialog.askstring(t("mod_url_title"), t("mod_url_prompt"), parent=self.win)
         if not url or not url.strip():
             return
         url = url.strip()
-        if not self.mods_dir:
-            self.mods_dir = find_mods_dir(self.version, create=True)
-        if not self.mods_dir:
-            messagebox.showerror(t("mod_err_title"), t("mod_no_dir_err"), parent=self.win); return
+        if not self._ensure_dir():
+            return
         self._set_status(t("mod_dl_status", url=url), "#0066cc")
-        threading.Thread(target=self._download_then_install, args=(url,), daemon=True).start()
+        threading.Thread(target=self._dl_thread, args=(url,), daemon=True).start()
 
-    def _download_then_install(self, url):
-        """네트워크 다운로드는 스레드에서, 설치(프롬프트 포함)는 메인 스레드에서."""
+    def _dl_thread(self, url):
         try:
             zip_url, fallback = resolve_mod_url(url)
             data = download_bytes(zip_url)
+            is_zip = zip_url.lower().split("?")[0].endswith(".zip") or "/archive/" in zip_url
         except Exception as e:
             self._set_status(t("failed"), "red")
             self.win.after(0, lambda: messagebox.showerror(t("mod_dl_failed"), str(e), parent=self.win))
             return
-        self.win.after(0, lambda: self._install_from_bytes(data, fallback))
+        self.win.after(0, lambda: self._finish_url(data, fallback, url, is_zip))
 
-    def _install_from_bytes(self, data, fallback):
+    def _finish_url(self, data, fallback, url, is_zip):
         try:
-            with zipfile.ZipFile(io.BytesIO(data)) as zf:
-                count = self._install_mod_archive(zf, fallback)
+            ext = os.path.splitext(url.split("?")[0])[1].lower()
+            if (not is_zip) and self.spec["kind"] == "files" and ext in self.spec["exts"]:
+                count = self._write_file(os.path.basename(url.split("?")[0]), data)
+            else:
+                count = self._copy_zip(data, fallback)
         except zipfile.BadZipFile:
             self._set_status(t("failed"), "red")
             messagebox.showerror(t("mod_add_failed"), t("mod_not_zip"), parent=self.win); return
@@ -1120,56 +1241,82 @@ class ModWindow:
         if count:
             messagebox.showinfo(t("done_title"), t("mod_added_n", n=count), parent=self.win)
         else:
-            messagebox.showwarning(t("mod_none_title"), t("mod_none_msg"), parent=self.win)
+            messagebox.showwarning(t("mod_none_title"), t("res_none_msg"), parent=self.win)
         self.refresh()
 
-    def _install_mod_archive(self, zf, fallback_name):
-        """ZipFile 안에서 modinfo.json 을 가진 폴더(들)를 찾아 data/mods 로 복사.
-        추가한 폴더에는 MOD_MARKER 표시 파일을 남긴다. 추가한 개수를 반환."""
-        tmp = tempfile.mkdtemp(prefix="cdda_mod_")
+    # ---- 설치 구현 ----
+    def _copy_zip(self, data, fallback):
+        """zip 바이트를 풀어 spec 에 맞는 콘텐츠를 대상 폴더로 복사. 개수 반환."""
+        tmp = tempfile.mkdtemp(prefix="cdda_res_")
         try:
-            zf.extractall(tmp)
-            mod_dirs = [dp for dp, _, files in os.walk(tmp) if "modinfo.json" in files]
-            if not mod_dirs:
-                return 0
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                zf.extractall(tmp)
             count = 0
-            for md in mod_dirs:
-                if os.path.normpath(md) == os.path.normpath(tmp):
-                    raw = fallback_name
-                else:
-                    raw = os.path.basename(md)
-                name = safe_folder_name(strip_branch_suffix(raw))
-                dest = os.path.join(self.mods_dir, name)
-                if os.path.isdir(dest):
-                    if not messagebox.askyesno(t("mod_exists_title"),
-                            t("mod_exists_msg", name=name), parent=self.win):
-                        continue
-                    shutil.rmtree(dest)
-                shutil.copytree(md, dest)
-                open(os.path.join(dest, MOD_MARKER), "w").close()  # 추가 표시
-                count += 1
+            if self.spec["kind"] == "folder":
+                idf = self.spec["id_file"]
+                srcs = [dp for dp, _, files in os.walk(tmp) if idf in files]
+                for md in srcs:
+                    raw = fallback if os.path.normpath(md) == os.path.normpath(tmp) \
+                        else os.path.basename(md)
+                    name = safe_folder_name(strip_branch_suffix(raw))
+                    dest = os.path.join(self.rdir, name)
+                    if os.path.isdir(dest):
+                        if not messagebox.askyesno(t("mod_exists_title"),
+                                t("mod_exists_msg", name=name), parent=self.win):
+                            continue
+                        shutil.rmtree(dest)
+                    shutil.copytree(md, dest)
+                    open(os.path.join(dest, MOD_MARKER), "w").close()
+                    count += 1
+            else:  # files (폰트): zip 안 폰트 파일들을 추출
+                for dp, _, files in os.walk(tmp):
+                    for fn in files:
+                        if os.path.splitext(fn)[1].lower() in self.spec["exts"]:
+                            count += self._copy_file(os.path.join(dp, fn))
             return count
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
-    def remove_mod(self):
-        m = self._selected_mod()
-        if not m:
+    def _copy_file(self, src):
+        """개별 파일(폰트)을 대상 폴더로 복사 + 마커. 1 또는 0 반환."""
+        return self._write_file(os.path.basename(src), open(src, "rb").read())
+
+    def _write_file(self, filename, data):
+        dest = os.path.join(self.rdir, filename)
+        if os.path.isfile(dest):
+            if not messagebox.askyesno(t("mod_exists_title"),
+                    t("mod_exists_msg", name=filename), parent=self.win):
+                return 0
+        with open(dest, "wb") as fh:
+            fh.write(data)
+        open(dest + FILE_MARKER_SUFFIX, "w").close()
+        return 1
+
+    # ---- 제거 / 열기 ----
+    def remove(self):
+        it = self._selected()
+        if not it:
             messagebox.showinfo(t("need_select_title"), t("mod_remove_select"), parent=self.win); return
         if not messagebox.askyesno(t("mod_remove_title"),
-                                   t("mod_remove_msg", name=m["name"], path=m["path"]), parent=self.win):
+                                   t("mod_remove_msg", name=it["name"], path=it["path"]), parent=self.win):
             return
         try:
-            shutil.rmtree(m["path"])
+            if os.path.isdir(it["path"]):
+                shutil.rmtree(it["path"])
+            else:
+                os.remove(it["path"])
+                mk = it["path"] + FILE_MARKER_SUFFIX
+                if os.path.isfile(mk):
+                    os.remove(mk)
             self.refresh()
         except Exception as e:
             messagebox.showerror(t("mod_remove_failed"), str(e), parent=self.win)
 
-    def open_mods_folder(self):
-        if not self.mods_dir or not os.path.isdir(self.mods_dir):
+    def open_dir(self):
+        if not self.rdir or not os.path.isdir(self.rdir):
             messagebox.showinfo(t("mod_no_folder_title"), t("mod_no_folder_msg"), parent=self.win); return
         try:
-            os.startfile(self.mods_dir)
+            os.startfile(self.rdir)
         except Exception as e:
             messagebox.showerror(t("mod_open_failed"), str(e), parent=self.win)
 

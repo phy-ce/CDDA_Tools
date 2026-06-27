@@ -25,6 +25,7 @@ cdda_installer.pyw  더블클릭
 
 > 모던 테마는 선택 의존성 **ttkbootstrap**으로 적용된다 (`pip install ttkbootstrap`).
 > 없으면 표준 tkinter 모양으로 자동 폴백하므로 그냥 실행해도 동작한다. exe 빌드본엔 포함됨.
+> 창 상단 우측 토글로 **밝게 / 다크 / 보라** 테마를 실시간 전환할 수 있다 (ttkbootstrap 있을 때).
 
 ## 화면 구성 (탭 2개)
 

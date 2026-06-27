@@ -38,6 +38,9 @@ except Exception:
     _TB_WINDOW = None
     UI_THEME = None
 
+# 사용자가 고를 수 있는 테마 (ttkbootstrap 있을 때만 표시). (테마이름, i18n키)
+THEME_CHOICES = [("cosmo", "theme_light"), ("darkly", "theme_dark"), ("vapor", "theme_purple")]
+
 USER_AGENT = "CDDA-Installer/4.0 (+https://github.com/CleverRaven/Cataclysm-DDA)"
 GITHUB_API = "https://api.github.com/repos"
 
@@ -78,6 +81,10 @@ STRINGS = {
     "ko": {
         "app_title": "Cataclysm 설치 & 버전 매니저 (CDDA / CDBN)",
         "lang_label": "언어 / Language:",
+        "theme_label": "테마:",
+        "theme_light": "밝게",
+        "theme_dark": "다크",
+        "theme_purple": "보라",
         "tab_install": "설치",
         "tab_run": "실행",
         # 설치 탭
@@ -239,6 +246,10 @@ STRINGS = {
     "en": {
         "app_title": "Cataclysm Installer & Version Manager (CDDA / CDBN)",
         "lang_label": "언어 / Language:",
+        "theme_label": "Theme:",
+        "theme_light": "Light",
+        "theme_dark": "Dark",
+        "theme_purple": "Purple",
         "tab_install": "Install",
         "tab_run": "Library",
         # Install tab
@@ -873,6 +884,8 @@ class App:
         self.root = root
         self.lang = tk.StringVar(value="en")
         set_lang("en")
+        self.theme = tk.StringVar(value=UI_THEME or "")
+        self.fg = self._theme_fg()
 
         self.game = tk.StringVar(value="cdda")
         # 게임마다 설치 폴더를 분리해 목록이 섞이지 않게 한다
@@ -903,6 +916,15 @@ class App:
                         command=self.apply_language).pack(side="left", padx=(6, 0))
         ttk.Radiobutton(top, text="English", variable=self.lang, value="en",
                         command=self.apply_language).pack(side="left")
+
+        # 테마 선택 (ttkbootstrap 있을 때만 — 폴백 모드엔 테마 개념이 없음)
+        if _TB_WINDOW is not None:
+            tf = ttk.Frame(top)
+            tf.pack(side="right")
+            self.reg(ttk.Label(tf, text=t("theme_label")), "theme_label").pack(side="left")
+            for val, key in THEME_CHOICES:
+                self.reg(ttk.Radiobutton(tf, text=t(key), variable=self.theme, value=val,
+                         command=self.apply_theme), key).pack(side="left", padx=(6, 0))
 
         # 폭을 절반씩 나눈 큰 탭(세그먼트 버튼) — Library 가 왼쪽(첫 번째)
         self.view = tk.StringVar(value="library")
@@ -947,6 +969,32 @@ class App:
         """text= 를 가진 위젯을 등록하고 즉시 번역해 준다. 위젯을 반환."""
         self._i18n_text.append((widget, key))
         return widget
+
+    # ---- 테마 ----
+    def _theme_fg(self):
+        """현재 테마의 기본 글자색 (다크 테마에서 #333 이 안 보이는 문제 방지)."""
+        if _TB_WINDOW is not None:
+            try:
+                return ttk.Style().colors.fg
+            except Exception:
+                pass
+        return "#333"
+
+    def apply_theme(self):
+        if _TB_WINDOW is None:
+            return
+        try:
+            ttk.Style().theme_use(self.theme.get())
+        except Exception:
+            return
+        # 테마를 바꾸면 커스텀 스타일/기본 글자색을 다시 적용
+        ttk.Style().configure("Big.Toolbutton", font=("Segoe UI", 14, "bold"),
+                              padding=[10, 16], anchor="center", justify="center")
+        self.fg = self._theme_fg()
+        try:
+            self.status.config(foreground=self.fg)
+        except Exception:
+            pass
 
     def apply_language(self):
         set_lang(self.lang.get())
@@ -1011,7 +1059,7 @@ class App:
         self.reg(ttk.Checkbutton(pf, text=t("run_after"), variable=self.run_after),
                  "run_after").pack(anchor="w", pady=(6, 0))
 
-        self.status = ttk.Label(f, text=t("ready"), foreground="#333")
+        self.status = ttk.Label(f, text=t("ready"), foreground=self.fg)
         self.status.pack(anchor="w", pady=(10, 2))
         self.pbar = ttk.Progressbar(f, mode="determinate", maximum=100)
         self.pbar.pack(fill="x")
@@ -1019,8 +1067,8 @@ class App:
                                     "install_btn")
         self.install_btn.pack(pady=10, ipadx=20, ipady=3)
 
-    def set_status(self, text, c="#333"):
-        self.status.config(text=text, foreground=c)
+    def set_status(self, text, c=None):
+        self.status.config(text=text, foreground=c or self.fg)
 
     def _game(self):
         return GAMES_BY_KEY[self.game.get()]

@@ -259,6 +259,18 @@ MECH_DOC = {
          "times, or only placed sometimes — plus item counts and containers, which "
          "live in the map files, not the group. Treat the numbers as a solid guide, "
          "not an exact rate.</p>"),
+        ("Auto-refuelling fires (Source: Firewood zone)",
+         "<p>The game can keep a fire fed for you during long tasks. Designate a "
+         "<b>Source: Firewood</b> zone (zone manager, <code>Y</code>) over a pile "
+         "of firewood or other flammable items. While you do a long activity that "
+         "carries the <code>refuel_fires</code> flag — crafting, reading, waiting "
+         "— your character automatically pulls fuel from that zone and feeds "
+         "nearby fires, keeping light and heat up so you never stop to tend "
+         "them.</p>"
+         "<p>In the data it's the <code>SOURCE_FIREWOOD</code> loot zone; the "
+         "activities that use it carry <code>refuel_fires: true</code> in "
+         "<code>player_activities</code>. (The separate <code>LOOT_WOOD</code> "
+         "zone is just a tidy-up destination, not an auto-feed source.)</p>"),
     ],
     "ko": [
         ("데이터 vs. 엔진",
@@ -292,6 +304,16 @@ MECH_DOC = {
          "어떻게 배치하는지(여러 번 굴리거나, 가끔만 배치)와 아이템 개수·컨테이너에도 "
          "좌우되는데, 이건 그룹이 아니라 맵 파일에 있습니다. 숫자는 정확한 비율이 아니라 "
          "믿을 만한 길잡이로 보세요.</p>"),
+        ("불 자동 연료 보충 (Source: Firewood 존)",
+         "<p>장시간 작업 동안 게임이 알아서 불을 살려둘 수 있다. 존 관리자(<code>Y</code>)"
+         "에서 <b>Source: Firewood</b> 존을 장작이나 가연물이 쌓인 자리에 지정하면, "
+         "<code>refuel_fires</code> 플래그가 붙은 긴 작업 — 제작·독서·대기 — 을 하는 "
+         "동안 캐릭터가 그 존에서 연료를 꺼내 근처 불에 자동으로 넣어 빛과 열을 유지한다. "
+         "중간에 직접 불을 돌볼 필요가 없다.</p>"
+         "<p>데이터에서는 <code>SOURCE_FIREWOOD</code> 전리품 존으로 정의되고, 이를 쓰는 "
+         "활동들은 <code>player_activities</code>에 <code>refuel_fires: true</code>를 "
+         "가진다. (별개의 <code>LOOT_WOOD</code> 존은 정리용 목적지일 뿐, 자동 투입 "
+         "공급원이 아니다.)</p>"),
     ],
     "ja": [
         ("データ vs. エンジン",
@@ -326,6 +348,15 @@ MECH_DOC = {
          "グループをどう配置するか（複数回抽選、または時々のみ配置）や、アイテム数・容器にも"
          "左右され、これらはグループではなくマップファイルにあります。数値は正確な割合では"
          "なく確かな目安として見てください。</p>"),
+        ("焚き火の自動燃料補給 (Source: Firewood ゾーン)",
+         "<p>長時間の作業中、ゲームが自動で火を維持できる。ゾーン管理（<code>Y</code>）で "
+         "<b>Source: Firewood</b> ゾーンを薪や可燃物の山に指定すると、"
+         "<code>refuel_fires</code> フラグの付いた長時間作業（製作・読書・待機）の間、"
+         "キャラクターがそのゾーンから燃料を取り出して近くの火にくべ、明かりと熱を維持する。"
+         "途中で火の世話をする必要がない。</p>"
+         "<p>データでは <code>SOURCE_FIREWOOD</code> 戦利品ゾーンとして定義され、使用する"
+         "活動は <code>player_activities</code> に <code>refuel_fires: true</code> を持つ。"
+         "（別の <code>LOOT_WOOD</code> ゾーンは整理用の目的地で、自動補給源ではない。）</p>"),
     ],
 }
 

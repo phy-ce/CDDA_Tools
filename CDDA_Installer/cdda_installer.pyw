@@ -184,7 +184,7 @@ STRINGS = {
         "res_sound": "사운드팩",
         "res_tiles": "타일셋",
         "res_fonts": "폰트",
-        "res_subtitle": "이 도구로 추가한 항목만 표시됩니다. (게임 기본 번들은 제외)",
+        "res_subtitle": "기본(번들) 항목은 보호되어 삭제할 수 없고, 이 도구로 추가한 항목만 제거됩니다.",
         "res_add_file": "➕ 파일 추가",
         "res_add_title": "추가할 파일 선택",
         "res_font_filter": "폰트 파일",
@@ -193,6 +193,12 @@ STRINGS = {
         "res_none_msg": "추가할 항목을 찾지 못했습니다.",
         "res_zip_only": "이 항목은 zip 으로만 추가할 수 있습니다.",
         "res_count": "{n}개  |  {dir}",
+        "col_source": "구분",
+        "src_bundled": "기본",
+        "src_added": "추가됨",
+        "cant_remove_title": "삭제 불가",
+        "cant_remove_bundled": "기본 제공 항목은 삭제할 수 없습니다.",
+        "fonts_note": "⚠ 폰트는 복사만으로 적용되지 않습니다 — config/fonts.json 에서 지정해야 실제로 쓰입니다.",
     },
     "en": {
         "app_title": "Cataclysm Installer & Version Manager (CDDA / CDBN)",
@@ -313,7 +319,7 @@ STRINGS = {
         "res_sound": "Soundpacks",
         "res_tiles": "Tilesets",
         "res_fonts": "Fonts",
-        "res_subtitle": "Only items added with this tool are shown. (bundled content excluded)",
+        "res_subtitle": "Bundled items are protected from deletion; only items added with this tool can be removed.",
         "res_add_file": "➕ Add file",
         "res_add_title": "Select file(s) to add",
         "res_font_filter": "Font files",
@@ -322,6 +328,12 @@ STRINGS = {
         "res_none_msg": "No installable item found.",
         "res_zip_only": "This type can only be added from a zip.",
         "res_count": "{n} items  |  {dir}",
+        "col_source": "Type",
+        "src_bundled": "Bundled",
+        "src_added": "Added",
+        "cant_remove_title": "Can't delete",
+        "cant_remove_bundled": "Bundled (built-in) items can't be deleted.",
+        "fonts_note": "⚠ Copying a font isn't enough — set it in config/fonts.json to actually use it.",
     },
 }
 
@@ -508,7 +520,8 @@ RESOURCE_SPECS = {
     "tiles": {"label_key": "res_tiles", "dirs": [("gfx",)],
               "id_file": "tileset.txt", "kind": "folder"},
     "fonts": {"label_key": "res_fonts", "dirs": [("data", "font"), ("font",)],
-              "id_file": None, "kind": "files", "exts": (".ttf", ".ttc", ".otf")},
+              "id_file": None, "kind": "files", "exts": (".ttf", ".ttc", ".otf"),
+              "note_key": "fonts_note"},
 }
 FILE_MARKER_SUFFIX = ".cdda_added"  # 폰트 등 파일 자원은 옆에 마커 파일을 둔다
 
@@ -581,8 +594,9 @@ def find_resource_dir(version: dict, spec: dict, create: bool = False):
     return None
 
 
-def scan_resources(rdir: str, spec: dict, only_added: bool = True):
-    """자원 목록 반환. only_added=True 면 이 도구로 추가한 것만(마커 보유)."""
+def scan_resources(rdir: str, spec: dict):
+    """자원 목록 반환. 번들/추가를 모두 보여주되 각 항목에 bundled 플래그를 단다.
+    bundled=True(마커 없음)는 게임 기본 제공 → 삭제 보호 대상."""
     out = []
     if not rdir or not os.path.isdir(rdir):
         return out
@@ -591,12 +605,11 @@ def scan_resources(rdir: str, spec: dict, only_added: bool = True):
             p = os.path.join(rdir, entry)
             if not os.path.isdir(p):
                 continue
-            if only_added and not os.path.isfile(os.path.join(p, MOD_MARKER)):
-                continue
             name = read_resource_name(p, spec)
             if name is None:
-                continue
-            out.append({"name": name, "folder": entry, "path": p})
+                continue  # 식별 파일 없으면 자원 아님
+            bundled = not os.path.isfile(os.path.join(p, MOD_MARKER))
+            out.append({"name": name, "folder": entry, "path": p, "bundled": bundled})
     else:  # files (폰트)
         for entry in sorted(os.listdir(rdir), key=str.lower):
             p = os.path.join(rdir, entry)
@@ -604,9 +617,8 @@ def scan_resources(rdir: str, spec: dict, only_added: bool = True):
                 continue
             if os.path.splitext(entry)[1].lower() not in spec["exts"]:
                 continue
-            if only_added and not os.path.isfile(p + FILE_MARKER_SUFFIX):
-                continue
-            out.append({"name": entry, "folder": entry, "path": p})
+            bundled = not os.path.isfile(p + FILE_MARKER_SUFFIX)
+            out.append({"name": entry, "folder": entry, "path": p, "bundled": bundled})
     return out
 
 

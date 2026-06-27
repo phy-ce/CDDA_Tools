@@ -478,6 +478,9 @@ class DataIndex:
         self._quality_items = {}  # tool quality id -> [(item id, level), ...]
         self._skill_books = {}   # skill id -> set(book item id)
         self._item_idx_built = False
+        self._skill_ids = []     # all skill ids (for search), built lazily
+        self._monster_ids = []   # all monster ids (for search), built lazily
+        self._ent_built = False
         self.flag_info = {}      # flag id -> info text (json_flag)
         self.action_names = {}   # item_action id -> readable name
         self.item_ids = []       # ids whose type is a real item (for search)
@@ -893,6 +896,34 @@ class DataIndex:
         rows = [(self.name(i), i) for i in self.item_ids]
         rows.sort(key=lambda x: x[0].lower())
         return rows
+
+    def item_pairs(self):           # unsorted (name, id), for search
+        return [(self.name(i), i) for i in self.item_ids]
+
+    def _build_entities(self):
+        if self._ent_built:
+            return
+        for eid, e in self.by_id.items():
+            if not isinstance(e, dict):
+                continue
+            t = e.get("type")
+            if t == "skill":
+                self._skill_ids.append(eid)
+            elif t == "MONSTER":
+                self._monster_ids.append(eid)
+        self._ent_built = True
+
+    def all_skills(self):
+        self._build_entities()
+        return [(self.name(s), s) for s in self._skill_ids]
+
+    def all_monsters(self):
+        self._build_entities()
+        return [(self.name(m), m) for m in self._monster_ids]
+
+    def all_flags(self):
+        self._build_item_indexes()
+        return sorted(set(self._flag_items) | set(self.flag_info))
 
     def book_info(self, rid):
         """If rid (following copy-from) is a BOOK, the skill it trains and the
@@ -1659,6 +1690,15 @@ details.morechips > summary::-webkit-details-marker { display: none; }
 details.morechips > summary::marker { content: ""; }
 details.morechips > summary:hover { border-color: var(--link); }
 details.morechips[open] > summary { margin-bottom: 6px; }
+/* search-box autocomplete dropdown */
+#ac { display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 30;
+      margin-top: 5px; background: var(--panel); border: 1px solid var(--border2);
+      border-radius: 9px; max-height: 64vh; overflow: auto;
+      box-shadow: 0 8px 28px rgba(0,0,0,.22); }
+#ac a { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+        padding: 8px 12px; text-decoration: none; color: var(--fg); font-size: 14px; }
+#ac a:hover { background: var(--hover); }
+#ac .ack { color: var(--faint); font-size: 12px; white-space: nowrap; flex: none; }
 .prob { font: 12px ui-monospace, Consolas, monospace; color: var(--muted);
         min-width: 3.6em; text-align: right; flex: none; padding-top: 1px; }
 /* mechanics doc page */
@@ -1699,11 +1739,14 @@ def page(title, body, ctx, q="", nav=None):
     <select name="lang" onchange="this.form.submit()">%(langs)s</select>
     <label><input type=checkbox name="mods" value="1"%(mods_chk)s onchange="this.form.submit()"> %(mods_label)s</label>
   </form>
-  <form method="get" action="/" style="display:flex;flex:1;gap:8px;margin:0;">
+  <form method="get" action="/" style="display:flex;flex:1;gap:8px;margin:0;position:relative;">
     <input type=hidden name="ver" value="%(ver)d">
     <input type=hidden name="lang" value="%(lang)s">
     %(mods_hidden)s
-    <input type=search name="q" value="%(q)s" placeholder="%(search_ph)s" autofocus>
+    <input id="searchbox" autocomplete="off"
+           data-sg="/suggest?ver=%(ver)d&lang=%(lang)s%(mods_q)s"
+           type=search name="q" value="%(q)s" placeholder="%(search_ph)s" autofocus>
+    <div id="ac"></div>
   </form>
 </header>""" % {
         "action": action, "hidden": hidden, "vers": vers, "langs": langs,
@@ -1717,7 +1760,38 @@ def page(title, body, ctx, q="", nav=None):
               "document.querySelectorAll('.treescroll').forEach(function(s){"
               "var r=s.querySelector('.node.root');if(!r)return;"
               "var a=r.getBoundingClientRect(),b=s.getBoundingClientRect();"
-              "s.scrollLeft+=(a.left+a.width/2)-(b.left+b.width/2);});});</script>")
+              "s.scrollLeft+=(a.left+a.width/2)-(b.left+b.width/2);});});</script>"
+              # search-box autocomplete: debounced fetch to /suggest, dropdown of links
+              "<script>(function(){var b=document.getElementById('searchbox'),"
+              "ac=document.getElementById('ac');if(!b||!ac)return;var t,base=b.dataset.sg;"
+              "function hide(){ac.style.display='none';ac.innerHTML='';}"
+              "function esc(s){return s.replace(/[&<>\"]/g,function(c){"
+              "return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c];});}"
+              "b.addEventListener('input',function(){clearTimeout(t);"
+              "var q=b.value.trim();if(!q){hide();return;}"
+              "t=setTimeout(function(){fetch(base+'&q='+encodeURIComponent(q))"
+              ".then(function(r){return r.json();}).then(function(d){"
+              "if(!d.length){hide();return;}ac.innerHTML=d.map(function(it){"
+              "return '<a href=\"'+esc(it.url)+'\"><span>'+esc(it.label)+"
+              "'</span><span class=ack>'+esc(it.kind)+'</span></a>';}).join('');"
+              "ac.style.display='block';}).catch(hide);},130);});"
+              "b.addEventListener('blur',function(){setTimeout(hide,180);});"
+              "addEventListener('keydown',function(e){if(e.key=='Escape')hide();});"
+              "})();</script>"
+              # crafting-tree "+N": click to pop up the alternative ingredients as links
+              "<script>(function(){function esc(s){return String(s).replace("
+              "/[&<>\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"
+              "'\"':'&quot;'}[c];});}document.addEventListener('click',function(ev){"
+              "var ex=document.getElementById('altpop');if(ex)ex.remove();"
+              "var t=ev.target.closest?ev.target.closest('.alt'):null;"
+              "if(!t||!t.dataset.alts)return;ev.preventDefault();var d;"
+              "try{d=JSON.parse(t.dataset.alts);}catch(e){return;}"
+              "var p=document.createElement('div');p.id='altpop';p.innerHTML=d.map("
+              "function(it){return it.url?'<a href=\"'+esc(it.url)+'\">'+esc(it.label)"
+              "+'</a>':'<span>'+esc(it.label)+'</span>';}).join('');"
+              "document.body.appendChild(p);var r=t.getBoundingClientRect();"
+              "p.style.left=(window.scrollX+r.left)+'px';"
+              "p.style.top=(window.scrollY+r.bottom+4)+'px';});})();</script>")
     # left index/nav; settings live at the bottom of it (not a top-corner gear)
     qsuf = "ver=%d&lang=%s%s" % (ctx["ver"], h(ctx["lang"]), "&mods=1" if ctx["mods"] else "")
 
@@ -1745,6 +1819,71 @@ def _result_section(label, total, links, ctx):
             % (h(label), total, "".join(shown), more))
 
 
+def _rank(q, *cands):
+    """0 = prefix match, 1 = word-start match, 2 = substring; None = no match."""
+    best = None
+    for c in cands:
+        if not c:
+            continue
+        cl = c.lower()
+        if cl.startswith(q):
+            r = 0
+        elif (" " + q) in cl:
+            r = 1
+        elif q in cl:
+            r = 2
+        else:
+            continue
+        if best is None or r < best:
+            best = r
+    return best
+
+
+def search_categories(idx, ctx, q):
+    """Ranked matches across every kind of page. Returns [(string-key, rows)]
+    where rows = [(rank, label, href), ...]."""
+    q = q.strip().lower()
+    if not q:
+        return []
+    cats = []
+
+    def add(key, rows):
+        if rows:
+            rows.sort(key=lambda t: (t[0], t[1].lower()))
+            cats.append((key, rows))
+
+    rows = [(r, lab, item_url(iid, ctx))
+            for lab, iid in idx.item_pairs()
+            for r in (_rank(q, lab, idx.raw_name(iid), iid),) if r is not None]
+    add("nav_items", rows)
+
+    rows = [(r, gid.replace("_", " "), group_url(gid, ctx))
+            for gid in idx.group_def
+            for r in (_rank(q, gid.replace("_", " "), gid),) if r is not None]
+    add("nav_loot", rows)
+
+    rows = [(r, lab, skill_url(sid, ctx))
+            for lab, sid in idx.all_skills()
+            for r in (_rank(q, lab, idx.raw_name(sid), sid),) if r is not None]
+    add("skill_single", rows)
+
+    rows = [(r, idx.tr(nm), quality_url(qid, ctx))
+            for qid, nm in idx.quals.items()
+            for r in (_rank(q, idx.tr(nm), nm, qid),) if r is not None]
+    add("quality_single", rows)
+
+    rows = [(r, f, flag_url(f, ctx))
+            for f in idx.all_flags()
+            for r in (_rank(q, f, idx.flag_desc(f) or ""),) if r is not None]
+    add("flag_single", rows)
+
+    rows = [(r, lab, monster_url(mid, ctx))
+            for lab, mid in idx.all_monsters()
+            for r in (_rank(q, lab, idx.raw_name(mid), mid),) if r is not None]
+    add("monster_single", rows)
+    return cats
+
+
 def render_search(ctx, q):
     idx = get_index(ctx["ver"], ctx["mods"])
     idx.tr = get_translator(ctx["ver"], ctx["lang"])
@@ -1752,36 +1891,27 @@ def render_search(ctx, q):
         craft = idx.craftable()
         body = '<p class="hint">%s</p>' % h(T(ctx, "hint", n=len(craft), r=len(idx.recipes)))
         return page(T(ctx, "brand"), body, ctx, q, nav="items")
-    ql = q.strip().lower()
-
-    # items: match name (localized + English), id, description text, or a flag
-    def hit(disp, rid):
-        if ql in disp.lower() or ql in idx.raw_name(rid).lower() or ql in rid.lower():
-            return True
-        d = idx.desc(rid)
-        if d and ql in d.lower():
-            return True
-        rd = idx.raw_desc(rid)
-        if rd and ql in rd.lower():
-            return True
-        return any(ql in f.lower() for f in idx.flags_of(rid))
-    items = [(disp, rid) for disp, rid in idx.all_items() if hit(disp, rid)]
-    # loot groups: match the id, raw or spaced
-    groups = sorted(g for g in idx.group_def
-                    if ql in g.lower() or ql in g.replace("_", " ").lower())
-
     sections = []
-    if items:
-        links = ['<a href="%s">%s<span class="rid">%s</span></a>'
-                 % (item_url(rid, ctx), h(disp), h(rid)) for disp, rid in items]
-        sections.append(_result_section(T(ctx, "nav_items"), len(items), links, ctx))
-    if groups:
-        links = ['<a href="%s">%s<span class="rid">%s</span></a>'
-                 % (group_url(g, ctx), h(g.replace("_", " ")), h(g)) for g in groups]
-        sections.append(_result_section(T(ctx, "nav_loot"), len(groups), links, ctx))
-
+    for key, rows in search_categories(idx, ctx, q):
+        links = ['<a href="%s">%s</a>' % (href, h(label)) for _, label, href in rows]
+        sections.append(_result_section(T(ctx, key), len(rows), links, ctx))
     body = "".join(sections) or "<p class='muted'>%s</p>" % h(T(ctx, "no_match"))
     return page("%s — CDDA Recipes" % q, body, ctx, q, nav="items")
+
+
+def suggest_json(ctx, q):
+    """Flat top matches across all categories, for the search-box dropdown."""
+    idx = get_index(ctx["ver"], ctx["mods"])
+    idx.tr = get_translator(ctx["ver"], ctx["lang"])
+    flat = []
+    for key, rows in search_categories(idx, ctx, q):
+        kind = T(ctx, key)
+        for r, label, href in rows[:8]:
+            flat.append((r, label, href, kind))
+    flat.sort(key=lambda t: (t[0], t[1].lower()))
+    out = [{"label": label, "kind": kind, "url": href}
+           for _, label, href, kind in flat[:10]]
+    return json.dumps(out, ensure_ascii=False)
 
 
 def _stats_html(idx, ctx, rid):
@@ -2261,10 +2391,10 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
-    def _send(self, body, status=200):
+    def _send(self, body, status=200, content_type="text/html; charset=utf-8"):
         data = body.encode("utf-8")
         self.send_response(status)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -2287,6 +2417,9 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(render_loot(ctx))
             elif u.path == "/mechanics":
                 self._send(render_mechanics(ctx))
+            elif u.path == "/suggest":
+                self._send(suggest_json(ctx, first("q")),
+                           content_type="application/json; charset=utf-8")
             elif u.path == "/flag" and first("flag"):
                 self._send(render_flag(ctx, first("flag")))
             elif u.path == "/skill" and first("id"):

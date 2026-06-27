@@ -1,7 +1,7 @@
 name: build-exe
 
 # v* 태그를 푸시하면 (예: git tag v1.0 && git push --tags) 자동으로
-# Windows exe 를 빌드해 같은 태그의 GitHub Release 에 첨부한다.
+# Installer + Recipes 두 Windows exe 를 빌드해 같은 태그의 GitHub Release 에 첨부한다.
 on:
   push:
     tags:
@@ -24,11 +24,17 @@ jobs:
       - name: Install deps
         run: pip install pyinstaller ttkbootstrap pillow
 
-      - name: Build exe
+      - name: Build Installer exe
         working-directory: CDDA_Installer
         run: pyinstaller --onefile --noconsole --name CDDA-Manager --collect-all ttkbootstrap cdda_installer.pyw
 
-      - name: Attach exe to Release
+      - name: Build Recipes exe
+        working-directory: CDDA_Recipes
+        run: pyinstaller --onefile --console --name CDDA-Recipes cdda_recipes.py
+
+      - name: Attach exes to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: CDDA_Installer/dist/CDDA-Manager.exe
+          files: |
+            CDDA_Installer/dist/CDDA-Manager.exe
+            CDDA_Recipes/dist/CDDA-Recipes.exe

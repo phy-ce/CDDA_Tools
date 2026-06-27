@@ -26,7 +26,17 @@ import traceback
 import urllib.request
 import urllib.error
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, simpledialog
+from tkinter import filedialog, messagebox, simpledialog
+# 모던 테마(ttkbootstrap)가 있으면 쓰고, 없으면 표준 ttk 로 폴백
+# → exe 빌드 시엔 모던하게, 의존성 없이 .pyw 직접 실행도 그대로 동작.
+try:
+    import ttkbootstrap as ttk
+    _TB_WINDOW = ttk.Window
+    UI_THEME = "cosmo"   # 과하지 않은 밝은 플랫 테마
+except Exception:
+    from tkinter import ttk
+    _TB_WINDOW = None
+    UI_THEME = None
 
 USER_AGENT = "CDDA-Installer/4.0 (+https://github.com/CleverRaven/Cataclysm-DDA)"
 GITHUB_API = "https://api.github.com/repos"
@@ -964,13 +974,13 @@ class App:
         self.reg(ttk.Label(f, text=t("install_subtitle"), foreground="#666"),
                  "install_subtitle").pack(anchor="w", pady=(0, 8))
 
-        gf = self.reg(ttk.LabelFrame(f, text=t("sec_game"), padding=8), "sec_game")
+        gf = self.reg(ttk.Labelframe(f, text=t("sec_game"), padding=8), "sec_game")
         gf.pack(fill="x", pady=3)
         for g in GAMES:
             ttk.Radiobutton(gf, text=f"{g['short']} — {g['name']}", variable=self.game,
                             value=g["key"], command=self.on_game_change).pack(side="left", padx=(0, 14))
 
-        ch = self.reg(ttk.LabelFrame(f, text=t("sec_channel"), padding=8), "sec_channel")
+        ch = self.reg(ttk.Labelframe(f, text=t("sec_channel"), padding=8), "sec_channel")
         ch.pack(fill="x", pady=3)
         self.reg(ttk.Radiobutton(ch, text=t("ch_experimental"), variable=self.channel,
                  value="experimental", command=self.refresh_releases),
@@ -979,18 +989,18 @@ class App:
                  value="stable", command=self.refresh_releases),
                  "ch_stable_radio").pack(anchor="w")
 
-        vf = self.reg(ttk.LabelFrame(f, text=t("sec_version"), padding=8), "sec_version")
+        vf = self.reg(ttk.Labelframe(f, text=t("sec_version"), padding=8), "sec_version")
         vf.pack(fill="x", pady=3)
         self.version_cb = ttk.Combobox(vf, state="readonly")
         self.version_cb.pack(fill="x")
         self.version_cb.bind("<<ComboboxSelected>>", lambda e: self.update_assets())
 
-        af = self.reg(ttk.LabelFrame(f, text=t("sec_edition"), padding=8), "sec_edition")
+        af = self.reg(ttk.Labelframe(f, text=t("sec_edition"), padding=8), "sec_edition")
         af.pack(fill="x", pady=3)
         self.asset_cb = ttk.Combobox(af, state="readonly")
         self.asset_cb.pack(fill="x")
 
-        pf = self.reg(ttk.LabelFrame(f, text=t("sec_folder"), padding=8), "sec_folder")
+        pf = self.reg(ttk.Labelframe(f, text=t("sec_folder"), padding=8), "sec_folder")
         pf.pack(fill="x", pady=3)
         row = ttk.Frame(pf)
         row.pack(fill="x")
@@ -1658,7 +1668,7 @@ class ResourceTab:
             ttk.Checkbutton(body, text=t(labels[cat]), variable=v).pack(anchor="w")
 
         # 크기 섹션 (options.json)
-        sf = ttk.LabelFrame(dlg, text=t("font_size_section"), padding=10)
+        sf = ttk.Labelframe(dlg, text=t("font_size_section"), padding=10)
         sf.pack(fill="x", padx=12, pady=(8, 0))
         size_vars = {}
         labels_fs = {"FONT_WIDTH": "fs_width", "FONT_HEIGHT": "fs_height", "FONT_SIZE": "fs_size"}
@@ -1701,12 +1711,12 @@ class ResourceTab:
 
 
 def main():
-    root = tk.Tk()
     try:
         from ctypes import windll
         windll.shcore.SetProcessDpiAwareness(1)
     except Exception:
         pass
+    root = _TB_WINDOW(themename=UI_THEME) if _TB_WINDOW is not None else tk.Tk()
     App(root)
     root.mainloop()
 

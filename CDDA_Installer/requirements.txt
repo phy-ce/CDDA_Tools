@@ -1,0 +1,3 @@
+# 선택 의존성: 있으면 모던 테마(ttkbootstrap), 없으면 표준 tkinter 로 자동 폴백.
+# .pyw 를 그냥 실행할 땐 없어도 동작한다. exe 빌드 시엔 설치 권장.
+ttkbootstrap>=1.10

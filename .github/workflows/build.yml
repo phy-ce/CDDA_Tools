@@ -21,12 +21,12 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install PyInstaller
-        run: pip install pyinstaller
+      - name: Install deps
+        run: pip install pyinstaller ttkbootstrap
 
       - name: Build exe
         working-directory: CDDA_Installer
-        run: pyinstaller --onefile --noconsole --name CDDA-Manager cdda_installer.pyw
+        run: pyinstaller --onefile --noconsole --name CDDA-Manager --collect-all ttkbootstrap cdda_installer.pyw
 
       - name: Attach exe to Release
         uses: softprops/action-gh-release@v2

@@ -23,6 +23,9 @@ double-click cdda_installer.pyw
 ```
 or: `python cdda_installer.pyw`
 
+> The modern theme comes from the optional dependency **ttkbootstrap** (`pip install ttkbootstrap`).
+> Without it the app falls back to standard tkinter, so it runs either way. The exe bundles it.
+
 ## Layout (2 tabs)
 
 ### [Library] tab — first screen
@@ -113,8 +116,8 @@ When a new stable major is released, just add one line for its tag to `GAMES[...
 ## Build your own .exe
 
 ```
-pip install pyinstaller
-pyinstaller --onefile --noconsole --name CDDA-Manager cdda_installer.pyw
+pip install pyinstaller ttkbootstrap
+pyinstaller --onefile --noconsole --name CDDA-Manager --collect-all ttkbootstrap cdda_installer.pyw
 ```
 The output is `dist/CDDA-Manager.exe`.
 Pushing a `v*` tag triggers GitHub Actions (`.github/workflows/build.yml`) to automatically

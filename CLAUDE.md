@@ -41,6 +41,12 @@ then confirm against `data/`, before writing code.
 - **Mods:** `data/mods/<id>/modinfo.json` (object with `type: MOD_INFO`).
 - **Soundpacks:** `data/sound/<name>/soundpack.txt` (`NAME:` line).
 - **Tilesets:** `gfx/<name>/tileset.txt` (`NAME:` line).
+- **Loot groups (`item_group`):** the `subtype` decides the probability math —
+  `collection` = each entry rolls independently (`prob` is a percent, default
+  100), `distribution` = exactly one entry, weighted (`prob` / Σ`prob`). An entry
+  may be an item, a `group` reference, or an inline `distribution`/`collection`.
+  Things that fire a group: a MONSTER's `death_drops`, and mapgen placement keyed
+  by `om_terrain`. Resolve nested groups by cascading (multiply down the tree).
 
 ## Conventions for CDDA_Installer
 
@@ -52,3 +58,21 @@ then confirm against `data/`, before writing code.
 - Each game/version installs into its own isolated folder; never mix saves.
 - Launch the game with its own folder as the working directory (CDDA needs
   `cwd` to be the game root to find `data/`).
+
+## Conventions for CDDA_Recipes
+
+- Windows-friendly; **standard library only** — server-rendered HTML over
+  `http.server`, opens in the browser. No third-party dependencies.
+- User-facing UI strings go through `UI_STRINGS` + `T()` in **English (`en`),
+  Korean (`ko`), and Japanese (`ja`)** — three languages; keep all in sync.
+  (Note: CDDA_Installer is `ko`/`en` only.) Game content (item/recipe names and
+  descriptions) is localized from the install's gettext `lang/mo/*.mo` files.
+- Reads game data from the installs CDDA_Installer creates under
+  `~/Games/Cataclysm-DDA|BN`; parse `data/json` (optionally `data/mods`),
+  following `copy-from` inheritance and expanding `requirement`/`LIST` blocks.
+
+## Build & release
+
+- Pushing a `v*` tag triggers `.github/workflows/build.yml`, which builds both
+  `CDDA-Manager.exe` and `CDDA-Recipes.exe` (PyInstaller, Windows) and attaches
+  them to a single GitHub Release for that tag.

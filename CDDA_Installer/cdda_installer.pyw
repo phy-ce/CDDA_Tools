@@ -198,7 +198,19 @@ STRINGS = {
         "src_added": "추가됨",
         "cant_remove_title": "삭제 불가",
         "cant_remove_bundled": "기본 제공 항목은 삭제할 수 없습니다.",
-        "fonts_note": "⚠ 폰트는 복사만으로 적용되지 않습니다 — config/fonts.json 에서 지정해야 실제로 쓰입니다.",
+        "fonts_note": "⚠ 폰트는 복사만으로 적용되지 않습니다 — '적용'을 눌러 config/fonts.json 에 반영하세요.",
+        "font_apply_btn": "🅰 적용",
+        "font_apply_title": "폰트 적용",
+        "font_apply_prompt": "'{name}' 을(를) 어느 글꼴 영역에 적용할까요?",
+        "font_cat_typeface": "기본 (게임 텍스트)",
+        "font_cat_gui": "메뉴 (GUI)",
+        "font_cat_map": "지도",
+        "font_cat_overmap": "전체 지도(overmap)",
+        "font_apply_ok": "적용",
+        "cancel": "취소",
+        "font_applied": "적용했습니다:\n{dest}\n\n게임을 재시작하면 반영됩니다. (이전 설정은 .bak 로 백업됨)",
+        "font_apply_none": "적용할 영역을 하나 이상 선택하세요.",
+        "font_apply_failed": "폰트 적용 실패",
     },
     "en": {
         "app_title": "Cataclysm Installer & Version Manager (CDDA / CDBN)",
@@ -333,7 +345,19 @@ STRINGS = {
         "src_added": "Added",
         "cant_remove_title": "Can't delete",
         "cant_remove_bundled": "Bundled (built-in) items can't be deleted.",
-        "fonts_note": "⚠ Copying a font isn't enough — set it in config/fonts.json to actually use it.",
+        "fonts_note": "⚠ Copying a font isn't enough — press 'Apply' to write it into config/fonts.json.",
+        "font_apply_btn": "🅰 Apply",
+        "font_apply_title": "Apply font",
+        "font_apply_prompt": "Where should '{name}' be applied?",
+        "font_cat_typeface": "Main (game text)",
+        "font_cat_gui": "Menus (GUI)",
+        "font_cat_map": "Map",
+        "font_cat_overmap": "Overmap",
+        "font_apply_ok": "Apply",
+        "cancel": "Cancel",
+        "font_applied": "Applied:\n{dest}\n\nRestart the game to see the change. (previous config backed up as .bak)",
+        "font_apply_none": "Select at least one area to apply.",
+        "font_apply_failed": "Failed to apply font",
     },
 }
 
@@ -655,6 +679,60 @@ def strip_branch_suffix(name: str):
         if name.endswith(suf):
             return name[:-len(suf)]
     return name
+
+
+# ---- 폰트 적용 (config/fonts.json 편집) ---------------------------------
+# 형식 근거: CleverRaven/Cataclysm-DDA  doc/user-guides/FONT_OPTIONS.md
+# config/fonts.json 은 첫 실행 시 data/fontdata.json 기본값으로 생성된다.
+FONT_CATEGORIES = ["typeface", "gui_typeface", "map_typeface", "overmap_typeface"]
+
+
+def game_root_of(version: dict):
+    return os.path.dirname(version["exe"]) if version.get("exe") else version["path"]
+
+
+def font_config_path(version: dict):
+    return os.path.join(game_root_of(version), "config", "fonts.json")
+
+
+def load_font_config(version: dict):
+    """config/fonts.json → 없으면 data/fontdata.json(기본값) → 없으면 빈 dict."""
+    root = game_root_of(version)
+    for p in (font_config_path(version), os.path.join(root, "data", "fontdata.json")):
+        if os.path.isfile(p):
+            try:
+                return json.load(open(p, encoding="utf-8"))
+            except Exception:
+                pass
+    return {}
+
+
+def _font_entry_path(entry):
+    return entry.get("path", "") if isinstance(entry, dict) else entry
+
+
+def apply_font_to_config(version: dict, font_abs_path: str, categories: list):
+    """선택 폰트를 config/fonts.json 의 지정 카테고리 맨 앞(주 글꼴)에 넣는다.
+    기존 파일은 .bak 로 백업한 뒤 기록. 기록한 경로를 반환."""
+    root = game_root_of(version)
+    rel = os.path.relpath(font_abs_path, root).replace("\\", "/")
+    cfg = load_font_config(version)
+    for cat in categories:
+        cur = cfg.get(cat)
+        lst = list(cur) if isinstance(cur, list) else ([] if cur is None else [cur])
+        lst = [e for e in lst if _font_entry_path(e) != rel]  # 중복 제거
+        lst.insert(0, rel)                                    # 주 글꼴로 맨 앞에
+        cfg[cat] = lst
+    dest = font_config_path(version)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    if os.path.isfile(dest):
+        try:
+            shutil.copy2(dest, dest + ".bak")
+        except Exception:
+            pass
+    with open(dest, "w", encoding="utf-8") as fh:
+        json.dump(cfg, fh, ensure_ascii=False, indent=2)
+    return dest
 
 
 # ---------------------------------------------------------------------------
@@ -1156,7 +1234,9 @@ class ResourceTab:
         add_label = t("res_add_file") if spec["kind"] == "files" else t("mod_btn_zip")
         ttk.Button(btns, text=add_label, command=self.add_local).pack(side="left", padx=6)
         ttk.Button(btns, text=t("mod_btn_remove"), command=self.remove).pack(side="left")
-        ttk.Button(btns, text=t("mod_btn_open"), command=self.open_dir).pack(side="left", padx=6)
+        if spec["kind"] == "files":  # 폰트: config/fonts.json 에 적용
+            ttk.Button(btns, text=t("font_apply_btn"), command=self.apply_font).pack(side="left", padx=6)
+        ttk.Button(btns, text=t("mod_btn_open"), command=self.open_dir).pack(side="right")
 
         self.refresh()
 
@@ -1339,6 +1419,56 @@ class ResourceTab:
             os.startfile(self.rdir)
         except Exception as e:
             messagebox.showerror(t("mod_open_failed"), str(e), parent=self.win)
+
+    # ---- 폰트 적용 (config/fonts.json) ----
+    def apply_font(self):
+        it = self._selected()
+        if not it:
+            messagebox.showinfo(t("need_select_title"), t("mod_remove_select"), parent=self.win); return
+        cats = self._ask_font_categories(it["name"])
+        if cats is None:
+            return  # 취소
+        if not cats:
+            messagebox.showwarning(t("font_apply_title"), t("font_apply_none"), parent=self.win); return
+        try:
+            dest = apply_font_to_config(self.version, it["path"], cats)
+        except Exception as e:
+            messagebox.showerror(t("font_apply_failed"), str(e), parent=self.win); return
+        messagebox.showinfo(t("done_title"), t("font_applied", dest=dest), parent=self.win)
+
+    def _ask_font_categories(self, font_name):
+        """적용할 글꼴 영역 선택 대화창. 선택 리스트(빈 리스트 가능) 또는 None(취소)."""
+        dlg = tk.Toplevel(self.win)
+        dlg.title(t("font_apply_title"))
+        dlg.transient(self.win)
+        dlg.grab_set()
+        dlg.resizable(False, False)
+        ttk.Label(dlg, text=t("font_apply_prompt", name=font_name),
+                  padding=(12, 10)).pack(anchor="w")
+        body = ttk.Frame(dlg, padding=(14, 0))
+        body.pack(fill="x")
+        defaults = {"typeface": True, "gui_typeface": True,
+                    "map_typeface": False, "overmap_typeface": False}
+        labels = {"typeface": "font_cat_typeface", "gui_typeface": "font_cat_gui",
+                  "map_typeface": "font_cat_map", "overmap_typeface": "font_cat_overmap"}
+        cvars = {}
+        for cat in FONT_CATEGORIES:
+            v = tk.BooleanVar(value=defaults[cat])
+            cvars[cat] = v
+            ttk.Checkbutton(body, text=t(labels[cat]), variable=v).pack(anchor="w")
+        state = {"ok": False}
+        btns = ttk.Frame(dlg, padding=10)
+        btns.pack(fill="x")
+
+        def ok():
+            state["ok"] = True
+            dlg.destroy()
+        ttk.Button(btns, text=t("font_apply_ok"), command=ok).pack(side="right")
+        ttk.Button(btns, text=t("cancel"), command=dlg.destroy).pack(side="right", padx=6)
+        dlg.wait_window()
+        if not state["ok"]:
+            return None
+        return [c for c in FONT_CATEGORIES if cvars[c].get()]
 
 
 def main():

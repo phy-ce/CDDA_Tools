@@ -62,10 +62,20 @@ When adding, the tool finds folders containing the identifier file (`modinfo.jso
 or font files for the Fonts tab, copies them to the target folder, and leaves a `.cdda_added` marker. Only
 marked items count as "Added" and can be deleted; unmarked bundled content is protected.
 
-> **Fonts note**: copying a font into `data/font/` is not enough. The game only uses fonts referenced by
-> `config/fonts.json` (`typeface`/`gui_typeface`/`map_typeface`/`overmap_typeface`), so you must edit that
-> file to actually use an added font (there is no in-game font picker). This is why bundled fonts
-> (Terminus/unifont, etc.) are delete-protected.
+### Applying a font
+
+CDDA only uses fonts referenced by `config/fonts.json`, even if the file sits in `data/font/`
+(there is no in-game font picker). So the Fonts tab has an **🅰 Apply** button:
+
+1. Add (or select a bundled) font, then click **🅰 Apply**.
+2. Choose where to apply it — Main (game text) / Menus (GUI) / Map / Overmap.
+3. The tool edits `config/fonts.json` to put that font **first (primary)** in the chosen
+   categories, keeping the existing fonts as fallback. The previous config is backed up as
+   `fonts.json.bak`; restart the game to see the change.
+
+`config/fonts.json` is created from `data/fontdata.json` on first run; the format follows the
+official doc `doc/user-guides/FONT_OPTIONS.md`. Bundled fonts (Terminus/unifont, etc.) are
+delete-protected so they can't be removed and break the game.
 
 > CDDA has no central content repository/API, so a "browse a list and pick" approach isn't possible.
 > Instead you fetch via a GitHub URL or zip/file link (most content lives on GitHub).

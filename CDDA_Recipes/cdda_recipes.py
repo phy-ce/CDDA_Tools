@@ -532,18 +532,20 @@ class DataIndex:
     _REF_KEYS = ("item", "group", "item_group", "groups")
 
     def _group_refs(self, node, out=None):
-        """(gid, chance) for every known item-group id referenced under a
-        reference key anywhere inside node. A ref-key string that isn't a known
-        group (e.g. a plain item id) is ignored."""
+        """(gid, chance, repeat) for every known item-group id referenced under a
+        reference key anywhere inside node. `chance`/`repeat` come from the dict
+        directly holding the ref. A ref-key string that isn't a known group
+        (e.g. a plain item id) is ignored."""
         if out is None:
             out = []
         if isinstance(node, dict):
             ch = node.get("chance")
+            rp = node.get("repeat")
             for k, v in node.items():
                 if k in self._REF_KEYS:
                     for x in (v if isinstance(v, list) else [v]):
                         if isinstance(x, str) and x in self.group_def:
-                            out.append((x, ch))
+                            out.append((x, ch, rp))
                         elif isinstance(x, (dict, list)):
                             self._group_refs(x, out)
                 elif isinstance(v, (dict, list)):
@@ -555,7 +557,8 @@ class DataIndex:
 
     def _index_sources(self):
         """Reverse index: which monsters drop a group on death, and which map
-        locations place it (with the mapgen 'chance' when given)."""
+        locations place it — each location with a placement ItemChance
+        (prob, expected) from the mapgen chance + repeat, spots combined."""
         def locs_of(mg):
             # only real overmap places; nested-mapgen chunks have no location and
             # would show as cryptic ids (e.g. 4x4_cr1), so they're left out
@@ -576,10 +579,10 @@ class DataIndex:
                 continue
             dd = mon.get("death_drops")
             if isinstance(dd, str):                      # direct group reference
-                refs = [(dd, None)] if dd in self.group_def else []
+                refs = [(dd, None, None)] if dd in self.group_def else []
             else:                                        # inline group object
                 refs = self._group_refs(dd)
-            for gid, _ in refs:
+            for gid, _ch, _rp in refs:
                 self.group_dropped_by.setdefault(gid, set()).add(mid)
 
         # palette id -> set(locations) of the mapgens that pull it in
@@ -590,18 +593,18 @@ class DataIndex:
                 if isinstance(p, str):
                     pal_locs.setdefault(p, set()).update(locs_of(mg))
 
-        def add_place(gid, loc, ch):
+        def add_place(gid, loc, chance, repeat):
             if not loc:
                 return
+            ic = _repeat_ic(_chance_ic(chance if chance is not None else 100), repeat)
             d = self.group_places.setdefault(gid, {})
-            if loc not in d or (ch is not None and (d[loc] is None or ch > d[loc])):
-                d[loc] = ch
+            d[loc] = ic if loc not in d else _or_ic(d[loc], ic)
 
         for mg in self._mapgens:
             labels = locs_of(mg)
-            for gid, ch in self._group_refs(mg.get("object")):
+            for gid, ch, rp in self._group_refs(mg.get("object")):
                 for loc in labels:
-                    add_place(gid, loc, ch)
+                    add_place(gid, loc, ch, rp)
 
         for pal in self._palettes:
             pid = pal.get("id")
@@ -610,9 +613,9 @@ class DataIndex:
                 continue
             targets = pal_locs.get(pid)
             if targets:                       # only attribute to real places
-                for gid, ch in refs:
+                for gid, ch, rp in refs:
                     for loc in targets:
-                        add_place(gid, loc, ch)
+                        add_place(gid, loc, ch, rp)
 
         self._monsters = []
         self._mapgens = []
@@ -1063,6 +1066,31 @@ def _or_ic(a, b):       # two independent rolls (collection)
 
 def _add_ic(a, b):      # mutually exclusive options (distribution)
     return (min(1.0, a[0] + b[0]), a[1] + b[1])
+
+
+def _normalize_repeat(r):
+    if isinstance(r, (int, float)):
+        return (int(r), int(r))
+    if isinstance(r, list) and r:
+        a = r[0]
+        b = r[1] if len(r) > 1 else r[0]
+        return (int(a), int(b)) if a <= b else (int(b), int(a))
+    return (1, 1)
+
+
+def _repeat_ic(ic, repeat):
+    """A placement tried `repeat` (range) times: prob = avg(1-(1-p)^r),
+    expected scales by the average repeat count."""
+    n0, n1 = _normalize_repeat(repeat)
+    if n0 <= 1 and n1 <= 1:
+        return ic
+    p, ex = ic
+    total, cnt = 0.0, 0
+    for r in range(max(0, n0), n1 + 1):
+        total += 1.0 - (1.0 - p) ** r
+        cnt += 1
+    prob = total / cnt if cnt else p
+    return (min(1.0, prob), ex * (n0 + n1) / 2.0)
 
 
 def _entry_loot(idx, e, parent_st, seen, depth):
@@ -1744,16 +1772,17 @@ def render_group(ctx, gid):
         # resolve each location to its readable place name (variants like
         # house_20 / house_24 share a name and collapse), keeping the best chance
         agg = {}
-        for loc, ch in places.items():
+        for loc, ic in places.items():
             label = idx.loc_name(loc) or _loc_base(loc)
-            if label not in agg or (ch is not None and (agg[label] is None or ch > agg[label])):
-                agg[label] = ch
+            cur = agg.get(label)
+            if cur is None or ic[0] > cur[0]:
+                agg[label] = ic
 
-        def loc_chip(name, ch):
-            sfx = "" if ch is None else ' <span class="locq">%s%%</span>' % h(ch)
-            return '<span class="chip loc">%s%s</span>' % (h(name), sfx)
+        def loc_chip(name, ic):
+            return ('<span class="chip loc">%s <span class="locq">%s</span></span>'
+                    % (h(name), pct_html(ic[0])))
         # most-likely places first, then alphabetical
-        rows = sorted(agg.items(), key=lambda kv: (-(kv[1] or 0), kv[0].lower()))
+        rows = sorted(agg.items(), key=lambda kv: (-kv[1][0], kv[0].lower()))
         cap = 24
         shown = rows[:cap]
         chips = "".join(loc_chip(l, c) for l, c in shown)

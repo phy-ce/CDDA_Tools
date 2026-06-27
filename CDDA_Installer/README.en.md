@@ -65,16 +65,25 @@ marked items count as "Added" and can be deleted; unmarked bundled content is pr
 ### Applying a font
 
 CDDA only uses fonts referenced by `config/fonts.json`, even if the file sits in `data/font/`
-(there is no in-game font picker). So the Fonts tab has an **🅰 Apply** button:
+(there is no in-game font picker). Fonts tab buttons:
 
-1. Add (or select a bundled) font, then click **🅰 Apply**.
-2. Choose where to apply it — Main (game text) / Menus (GUI) / Map / Overmap.
-3. (optional) Enter a **font size** — Width / Height / Size.
-4. On apply:
-   - **Typeface**: `config/fonts.json` gets that font as the primary (first) entry, keeping
-     existing fonts as fallback.
+- **🪟 System**: pick **fonts installed on Windows** (search, multi-select) and copy them into `data/font/`
+- **➕ Add file**: add a local font file / zip
+- **🅰 Edit / Apply**: write the font and size into the game config
+
+**🅰 Edit / Apply** flow:
+1. Choose where to apply it — Main (game text) / Menus (GUI) / Map / Overmap.
+2. (optional) Enter a **font size** — Width (FONT_WIDTH) / Height (FONT_HEIGHT) / Size (FONT_SIZE).
+3. On apply:
+   - **Typeface**: `config/fonts.json` gets that font as the primary (first) entry, keeping existing as fallback.
    - **Size**: `config/options.json` `FONT_WIDTH/HEIGHT/SIZE` values are updated.
    - The previous configs are backed up as `.bak`; restart the game to see the change.
+
+> Defaults: all four areas use **Terminus.ttf** (+ unifont fallback); size is **width 8 / height 16 / size 16**.
+> Width/height are the pixel size of one character cell; size is the glyph render size inside the cell
+> (usually raised together). Typeface can differ per area (main/menu/map/overmap); sizes are three
+> separate sets (main/map/overmap — the menu has no separate size). This dialog exposes the four
+> typefaces plus the main size.
 
 `config/fonts.json` is seeded from `data/fontdata.json`, and `config/options.json` is created,
 on first run. Formats follow the upstream docs/source (`doc/user-guides/FONT_OPTIONS.md`,

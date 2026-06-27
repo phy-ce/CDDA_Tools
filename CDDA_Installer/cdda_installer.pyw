@@ -199,8 +199,13 @@ STRINGS = {
         "cant_remove_title": "삭제 불가",
         "cant_remove_bundled": "기본 제공 항목은 삭제할 수 없습니다.",
         "fonts_note": "⚠ 폰트는 복사만으로 적용되지 않습니다 — '적용'을 눌러 config/fonts.json 에 반영하세요.",
-        "font_apply_btn": "🅰 적용",
-        "font_apply_title": "폰트 적용",
+        "font_apply_btn": "🅰 편집/적용",
+        "font_apply_title": "글꼴 편집 / 적용",
+        "sysfont_btn": "🪟 시스템",
+        "sysfont_title": "설치된 폰트에서 추가",
+        "sysfont_prompt": "Windows에 설치된 폰트를 골라 추가합니다. (검색·복수 선택 가능)",
+        "sysfont_none": "설치된 폰트를 찾지 못했습니다.",
+        "sysfont_add": "추가",
         "font_apply_prompt": "'{name}' 을(를) 어느 글꼴 영역에 적용할까요?",
         "font_cat_typeface": "기본 (게임 텍스트)",
         "font_cat_gui": "메뉴 (GUI)",
@@ -355,8 +360,13 @@ STRINGS = {
         "cant_remove_title": "Can't delete",
         "cant_remove_bundled": "Bundled (built-in) items can't be deleted.",
         "fonts_note": "⚠ Copying a font isn't enough — press 'Apply' to write it into config/fonts.json.",
-        "font_apply_btn": "🅰 Apply",
-        "font_apply_title": "Apply font",
+        "font_apply_btn": "🅰 Edit / Apply",
+        "font_apply_title": "Edit / Apply font",
+        "sysfont_btn": "🪟 System",
+        "sysfont_title": "Add from installed fonts",
+        "sysfont_prompt": "Pick fonts installed on Windows to add. (search, multi-select)",
+        "sysfont_none": "No installed fonts found.",
+        "sysfont_add": "Add",
         "font_apply_prompt": "Where should '{name}' be applied?",
         "font_cat_typeface": "Main (game text)",
         "font_cat_gui": "Menus (GUI)",
@@ -703,6 +713,24 @@ def strip_branch_suffix(name: str):
 # 형식 근거: CleverRaven/Cataclysm-DDA  doc/user-guides/FONT_OPTIONS.md
 # config/fonts.json 은 첫 실행 시 data/fontdata.json 기본값으로 생성된다.
 FONT_CATEGORIES = ["typeface", "gui_typeface", "map_typeface", "overmap_typeface"]
+
+
+def list_system_fonts():
+    """Windows에 설치된 폰트 파일 목록 [(표시명, 경로)] 반환 (중복 제거)."""
+    dirs = [os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts")]
+    la = os.environ.get("LOCALAPPDATA")
+    if la:
+        dirs.append(os.path.join(la, "Microsoft", "Windows", "Fonts"))
+    exts = (".ttf", ".ttc", ".otf")
+    seen, out = set(), []
+    for d in dirs:
+        if not os.path.isdir(d):
+            continue
+        for f in sorted(os.listdir(d), key=str.lower):
+            if os.path.splitext(f)[1].lower() in exts and f.lower() not in seen:
+                seen.add(f.lower())
+                out.append((f, os.path.join(d, f)))
+    return out
 
 
 def game_root_of(version: dict):
@@ -1302,8 +1330,10 @@ class ResourceTab:
         ttk.Button(btns, text=t("mod_btn_url"), command=self.add_url).pack(side="left")
         add_label = t("res_add_file") if spec["kind"] == "files" else t("mod_btn_zip")
         ttk.Button(btns, text=add_label, command=self.add_local).pack(side="left", padx=6)
+        if spec["kind"] == "files":  # 폰트: 시스템 폰트에서 추가
+            ttk.Button(btns, text=t("sysfont_btn"), command=self.add_system_font).pack(side="left", padx=6)
         ttk.Button(btns, text=t("mod_btn_remove"), command=self.remove).pack(side="left")
-        if spec["kind"] == "files":  # 폰트: config/fonts.json 에 적용
+        if spec["kind"] == "files":  # 폰트: config 에 편집/적용
             ttk.Button(btns, text=t("font_apply_btn"), command=self.apply_font).pack(side="left", padx=6)
         ttk.Button(btns, text=t("mod_btn_open"), command=self.open_dir).pack(side="right")
 
@@ -1488,6 +1518,68 @@ class ResourceTab:
             os.startfile(self.rdir)
         except Exception as e:
             messagebox.showerror(t("mod_open_failed"), str(e), parent=self.win)
+
+    # ---- 시스템(Windows) 설치 폰트에서 추가 ----
+    def add_system_font(self):
+        if not self._ensure_dir():
+            return
+        fonts = list_system_fonts()
+        if not fonts:
+            messagebox.showinfo(t("sysfont_title"), t("sysfont_none"), parent=self.win); return
+        paths = self._pick_system_fonts(fonts)
+        if not paths:
+            return
+        added = 0
+        for p in paths:
+            try:
+                added += self._copy_file(p)
+            except Exception as e:
+                messagebox.showerror(t("mod_add_failed"), f"{os.path.basename(p)}:\n{e}", parent=self.win)
+        if added:
+            messagebox.showinfo(t("done_title"), t("mod_added_n", n=added), parent=self.win)
+        self.refresh()
+
+    def _pick_system_fonts(self, fonts):
+        """설치 폰트 선택 대화창(검색+복수). 선택 경로 리스트 반환(취소 시 빈 리스트)."""
+        dlg = tk.Toplevel(self.win)
+        dlg.title(t("sysfont_title"))
+        dlg.transient(self.win)
+        dlg.grab_set()
+        dlg.geometry("380x440")
+        ttk.Label(dlg, text=t("sysfont_prompt"), wraplength=350,
+                  justify="left", padding=(10, 8)).pack(anchor="w")
+        fv = tk.StringVar()
+        ttk.Entry(dlg, textvariable=fv).pack(fill="x", padx=10)
+        lf = ttk.Frame(dlg, padding=10)
+        lf.pack(fill="both", expand=True)
+        lb = tk.Listbox(lf, selectmode="extended")
+        lb.pack(side="left", fill="both", expand=True)
+        sb = ttk.Scrollbar(lf, command=lb.yview)
+        sb.pack(side="right", fill="y")
+        lb.config(yscrollcommand=sb.set)
+        state = {"items": [], "sel": []}
+
+        def repop(*_):
+            q = fv.get().lower().strip()
+            lb.delete(0, "end")
+            state["items"] = []
+            for disp, path in fonts:
+                if q in disp.lower():
+                    lb.insert("end", disp)
+                    state["items"].append(path)
+        fv.trace_add("write", repop)
+        repop()
+
+        def ok():
+            state["sel"] = [state["items"][i] for i in lb.curselection()]
+            dlg.destroy()
+        lb.bind("<Double-1>", lambda e: ok())
+        btns = ttk.Frame(dlg, padding=10)
+        btns.pack(fill="x")
+        ttk.Button(btns, text=t("sysfont_add"), command=ok).pack(side="right")
+        ttk.Button(btns, text=t("cancel"), command=dlg.destroy).pack(side="right", padx=6)
+        dlg.wait_window()
+        return state["sel"]
 
     # ---- 폰트 적용 (config/fonts.json 글꼴 + config/options.json 크기) ----
     def apply_font(self):

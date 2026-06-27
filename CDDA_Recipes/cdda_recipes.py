@@ -84,6 +84,11 @@ UI_STRINGS = {
         "obtain": "Obtaining", "disassemble_from": "Disassemble from ({n})",
         "loot_at": "Found as loot ({n})",
         "flag_single": "Flag", "items_with_flag": "Items with this flag ({n})",
+        "skill_single": "Skill", "skill_recipes_label": "Recipes using this skill ({n})",
+        "skill_books_label": "Books that train it ({n})",
+        "quality_single": "Tool quality", "quality_items_label": "Items with this quality ({n})",
+        "monster_single": "Monster", "monster_drop_group": "Death-drop group",
+        "monster_drops": "Can drop ({n})",
     },
     "ko": {
         "brand": "CDDA 레시피", "search_ph": "아이템 이름 검색…", "mods": "모드",
@@ -129,6 +134,11 @@ UI_STRINGS = {
         "obtain": "입수", "disassemble_from": "분해로 얻기 ({n})",
         "loot_at": "전리품 ({n})",
         "flag_single": "특성(플래그)", "items_with_flag": "이 특성을 가진 아이템 ({n})",
+        "skill_single": "스킬", "skill_recipes_label": "이 스킬로 만드는 레시피 ({n})",
+        "skill_books_label": "훈련시키는 책 ({n})",
+        "quality_single": "도구 품질", "quality_items_label": "이 품질을 가진 아이템 ({n})",
+        "monster_single": "몬스터", "monster_drop_group": "사망 드롭 그룹",
+        "monster_drops": "드롭 가능 ({n})",
     },
     "ja": {
         "brand": "CDDAレシピ", "search_ph": "アイテム名で検索…", "mods": "MOD",
@@ -174,6 +184,11 @@ UI_STRINGS = {
         "obtain": "入手", "disassemble_from": "分解で入手 ({n})",
         "loot_at": "戦利品 ({n})",
         "flag_single": "フラグ", "items_with_flag": "このフラグを持つアイテム ({n})",
+        "skill_single": "スキル", "skill_recipes_label": "このスキルで作るレシピ ({n})",
+        "skill_books_label": "鍛える書籍 ({n})",
+        "quality_single": "道具品質", "quality_items_label": "この品質を持つアイテム ({n})",
+        "monster_single": "モンスター", "monster_drop_group": "死亡ドロップグループ",
+        "monster_drops": "ドロップ可能 ({n})",
     },
 }
 
@@ -426,7 +441,12 @@ class DataIndex:
         self.uncraft_from = {}   # yielded item id -> set(source item id) to disassemble
         self.book_recipes = {}   # book id -> [(recipe result, level), ...]
         self._loot_cache = {}    # group id -> flattened {item: (prob, expected)}
-        self._flag_items = None  # flag -> set(item id), built lazily
+        self.skill_recipes = {}  # skill id -> [recipe result id, ...]
+        # reverse item indexes, built together on first demand
+        self._flag_items = {}    # flag -> set(item id)
+        self._quality_items = {}  # tool quality id -> [(item id, level), ...]
+        self._skill_books = {}   # skill id -> set(book item id)
+        self._item_idx_built = False
         self.flag_info = {}      # flag id -> info text (json_flag)
         self.action_names = {}   # item_action id -> readable name
         self.item_ids = []       # ids whose type is a real item (for search)
@@ -502,6 +522,9 @@ class DataIndex:
                 self.cat_of[res] = r["category"]
             for iid in self._recipe_component_ids(r):
                 self.used_in.setdefault(iid, set()).add(res)
+            sk = r.get("skill_used")
+            if isinstance(sk, str):
+                self.skill_recipes.setdefault(sk, []).append(res)
             self._index_book_learn(r, res)
         for res, cat in self.cat_of.items():
             self.by_cat.setdefault(cat, []).append(res)
@@ -930,15 +953,31 @@ class DataIndex:
             return None
         return self.tr(re.sub(r"<[^>]+>", "", info)).strip()
 
+    def _build_item_indexes(self):
+        """One pass over items to build reverse flag / quality / book-skill maps."""
+        if self._item_idx_built:
+            return
+        for iid in self.item_ids:
+            for f in self.flags_of(iid):
+                self._flag_items.setdefault(f, set()).add(iid)
+            for q, lv in self.qualities_of(iid):
+                self._quality_items.setdefault(q, []).append((iid, lv))
+            bi = self.book_info(iid)
+            if bi and bi.get("skill"):
+                self._skill_books.setdefault(bi["skill"], set()).add(iid)
+        self._item_idx_built = True
+
     def items_with_flag(self, flag):
-        """Items carrying a flag (reverse of flags_of), built once on demand."""
-        if self._flag_items is None:
-            fi = {}
-            for iid in self.item_ids:
-                for f in self.flags_of(iid):
-                    fi.setdefault(f, set()).add(iid)
-            self._flag_items = fi
+        self._build_item_indexes()
         return self._flag_items.get(flag, set())
+
+    def items_with_quality(self, qid):
+        self._build_item_indexes()
+        return self._quality_items.get(qid, [])
+
+    def books_for_skill(self, skill):
+        self._build_item_indexes()
+        return self._skill_books.get(skill, set())
 
 
 # ---------------------------------------------------------------------------
@@ -1009,11 +1048,40 @@ def a_group(gid, ctx):
     return '<a class="chip" href="%s">%s</a>' % (group_url(gid, ctx), h(gid.replace("_", " ")))
 
 
-def flag_url(flag, ctx):
-    p = {"flag": flag, "ver": ctx["ver"], "lang": ctx["lang"]}
+def _kv_url(path, key, val, ctx):
+    p = {key: val, "ver": ctx["ver"], "lang": ctx["lang"]}
     if ctx["mods"]:
         p["mods"] = 1
-    return "/flag?" + urlencode(p)
+    return path + "?" + urlencode(p)
+
+
+def flag_url(flag, ctx):
+    return _kv_url("/flag", "flag", flag, ctx)
+
+
+def skill_url(skill, ctx):
+    return _kv_url("/skill", "id", skill, ctx)
+
+
+def quality_url(qid, ctx):
+    return _kv_url("/quality", "id", qid, ctx)
+
+
+def monster_url(mid, ctx):
+    return _kv_url("/monster", "id", mid, ctx)
+
+
+def a_skill(idx, skill, ctx):
+    return '<a class="item" href="%s">%s</a>' % (skill_url(skill, ctx), h(idx.name(skill)))
+
+
+def a_quality(idx, qid, ctx):
+    return '<a class="item" href="%s">%s</a>' % (
+        quality_url(qid, ctx), h(idx.tr(idx.quals.get(qid, qid))))
+
+
+def a_monster(idx, mid, ctx):
+    return '<a class="chip" href="%s">%s</a>' % (monster_url(mid, ctx), h(idx.name(mid)))
 
 
 def _more_chips(chips, cap=24):
@@ -1337,7 +1405,7 @@ def recipe_html(idx, recipe, ctx, n=None):
     skill = recipe.get("skill_used")
     diff = recipe.get("difficulty")
     if skill or diff is not None:
-        s = h(idx.name(skill)) if skill else "?"
+        s = a_skill(idx, skill, ctx) if skill else "?"
         if diff is not None:
             s += ' <span class="diff">%s %s</span>' % (h(T(ctx, "difficulty")), h(diff))
         field(h(T(ctx, "skill")), s)
@@ -1374,7 +1442,7 @@ def recipe_html(idx, recipe, ctx, n=None):
         qs = []
         for q in quals:
             if isinstance(q, dict):
-                qs.append("%s&nbsp;%s" % (h(idx.tr(idx.quals.get(q.get("id"), q.get("id")))),
+                qs.append("%s&nbsp;%s" % (a_quality(idx, q.get("id"), ctx),
                                           h(q.get("level", 1))))
         if qs:
             field(h(T(ctx, "toolq")), ", ".join(qs))
@@ -1720,7 +1788,7 @@ def _abilities_html(idx, ctx, rid):
     quals = idx.qualities_of(rid)
     if quals:
         rows.append(field(T(ctx, "toolq"), ", ".join(
-            "%s&nbsp;%s" % (h(idx.tr(idx.quals.get(q, q))), h(lv)) for q, lv in quals)))
+            "%s&nbsp;%s" % (a_quality(idx, q, ctx), h(lv)) for q, lv in quals)))
     acts = idx.actions_of(rid)
     if acts:
         rows.append(field(T(ctx, "actions"), ", ".join(h(a) for a in acts)))
@@ -1788,7 +1856,7 @@ def render_item(ctx):
                    if hi is not None else "")
             rows.append('<div class="f"><span class="k">%s</span>'
                         '<span class="v">%s%s</span></div>'
-                        % (h(T(ctx, "book_skill")), h(idx.name(sk)), lvl))
+                        % (h(T(ctx, "book_skill")), a_skill(idx, sk, ctx), lvl))
         learn, seen = [], set()
         for resv, _lv in sorted(idx.book_recipes.get(rid, ()),
                                 key=lambda x: idx.name(x[0]).lower()):
@@ -1829,8 +1897,7 @@ def render_item(ctx):
 
     mons = sorted(idx.item_drop_monsters(rid), key=lambda x: idx.name(x).lower())
     if mons:
-        chips = "".join('<a class="chip" href="%s">%s</a>' % (item_url(mid, ctx), h(idx.name(mid)))
-                        for mid in mons)
+        chips = "".join(a_monster(idx, mid, ctx) for mid in mons)
         obtain.append('<div class="section">%s</div><div class="chips">%s</div>'
                       % (h(T(ctx, "dropped_by", n=len(mons))), chips))
 
@@ -1908,9 +1975,7 @@ def render_group(ctx, gid):
     # where/when it triggers: monster death drops + map placements
     drops = sorted(idx.group_dropped_by.get(gid, ()), key=lambda x: idx.name(x).lower())
     if drops:
-        section("dropped_by", "".join(
-            '<a class="chip" href="%s">%s</a>' % (item_url(d, ctx), h(idx.name(d)))
-            for d in drops), len(drops))
+        section("dropped_by", "".join(a_monster(idx, d, ctx) for d in drops), len(drops))
     places = idx.group_places.get(gid) or {}
     if places:
         # resolve each location to its readable place name (variants like
@@ -2071,6 +2136,79 @@ def render_flag(ctx, flag):
     return page("%s — CDDA Recipes" % flag, "".join(parts), ctx, nav="items")
 
 
+def render_skill(ctx, skill):
+    """A skill page: recipes that use it (by difficulty) and books that train it."""
+    idx = get_index(ctx["ver"], ctx["mods"])
+    idx.tr = get_translator(ctx["ver"], ctx["lang"])
+    parts = ['<div class="idtag">%s</div><h1 class="item">%s</h1><div class="idtag">%s</div>'
+             % (h(T(ctx, "skill_single")), h(idx.name(skill)), h(skill))]
+    d = idx.desc(skill)
+    if d:
+        parts.append('<div class="desc">%s</div>' % h(d))
+    recs = sorted(set(idx.skill_recipes.get(skill, ())),
+                  key=lambda rid: (_item_level(idx, rid)[0], idx.name(rid).lower()))
+    if recs:
+        chips = ['<a class="chip" href="%s">%s <span class="locq">%s %s</span></a>'
+                 % (item_url(rid, ctx), h(idx.name(rid)), h(T(ctx, "lv")),
+                    h(_item_level(idx, rid)[0])) for rid in recs]
+        parts.append('<div class="section">%s</div>%s'
+                     % (h(T(ctx, "skill_recipes_label", n=len(recs))), _more_chips(chips, 80)))
+    books = sorted(idx.books_for_skill(skill), key=lambda x: idx.name(x).lower())
+    if books:
+        chips = ['<a class="chip" href="%s">%s</a>' % (item_url(b, ctx), h(idx.name(b)))
+                 for b in books]
+        parts.append('<div class="section">%s</div>%s'
+                     % (h(T(ctx, "skill_books_label", n=len(books))), _more_chips(chips, 80)))
+    return page("%s — CDDA Recipes" % idx.name(skill), "".join(parts), ctx, nav="items")
+
+
+def render_quality(ctx, qid):
+    """A tool-quality page: items that provide it, ranked by level."""
+    idx = get_index(ctx["ver"], ctx["mods"])
+    idx.tr = get_translator(ctx["ver"], ctx["lang"])
+    title = idx.tr(idx.quals.get(qid, qid))
+    parts = ['<div class="idtag">%s</div><h1 class="item">%s</h1><div class="idtag">%s</div>'
+             % (h(T(ctx, "quality_single")), h(title), h(qid))]
+    items = sorted(idx.items_with_quality(qid),
+                   key=lambda t: (-(t[1] or 0), idx.name(t[0]).lower()))
+    if items:
+        chips = ['<a class="chip" href="%s">%s <span class="locq">%s %s</span></a>'
+                 % (item_url(iid, ctx), h(idx.name(iid)), h(T(ctx, "lv")), h(lv))
+                 for iid, lv in items]
+        parts.append('<div class="section">%s</div>%s'
+                     % (h(T(ctx, "quality_items_label", n=len(items))), _more_chips(chips, 80)))
+    return page("%s — CDDA Recipes" % title, "".join(parts), ctx, nav="items")
+
+
+def render_monster(ctx, mid):
+    """A monster page: its description and what it drops on death."""
+    idx = get_index(ctx["ver"], ctx["mods"])
+    idx.tr = get_translator(ctx["ver"], ctx["lang"])
+    e = idx.by_id.get(mid) or {}
+    parts = ['<div class="idtag">%s</div><h1 class="item">%s</h1><div class="idtag">%s</div>'
+             % (h(T(ctx, "monster_single")), h(idx.name(mid)), h(mid))]
+    d = idx.desc(mid)
+    if d:
+        parts.append('<div class="desc">%s</div>' % h(d))
+    dd = e.get("death_drops")
+    if isinstance(dd, str) and dd in idx.group_def:
+        parts.append('<div class="section">%s</div><div class="chips">%s</div>'
+                     % (h(T(ctx, "monster_drop_group")), a_group(dd, ctx)))
+        loot = idx.loot_of(dd)
+        if loot:
+            top = sorted(loot.items(), key=lambda kv: (-kv[1][1], -kv[1][0]))
+            lis = []
+            for iid, (p, ex) in top:
+                avg = ("%.2f" % ex) if ex < 10 else str(round(ex))
+                lis.append('<li><span class="prob">%s</span><div class="ent">%s'
+                           ' <span class="locq">%s %s</span></div></li>'
+                           % (pct_html(p), a_item(idx, iid, ctx),
+                              h(T(ctx, "avg_label")), h(avg)))
+            parts.append('<div class="section">%s</div>%s'
+                         % (h(T(ctx, "monster_drops", n=len(loot))), _more_list(lis)))
+    return page("%s — CDDA Recipes" % idx.name(mid), "".join(parts), ctx)
+
+
 # ---------------------------------------------------------------------------
 # HTTP server
 # ---------------------------------------------------------------------------
@@ -2120,6 +2258,12 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(render_mechanics(ctx))
             elif u.path == "/flag" and first("flag"):
                 self._send(render_flag(ctx, first("flag")))
+            elif u.path == "/skill" and first("id"):
+                self._send(render_skill(ctx, first("id")))
+            elif u.path == "/quality" and first("id"):
+                self._send(render_quality(ctx, first("id")))
+            elif u.path == "/monster" and first("id"):
+                self._send(render_monster(ctx, first("id")))
             elif u.path == "/settings":
                 saved = first("save") == "1"
                 if saved:                       # checkbox absent => unchecked

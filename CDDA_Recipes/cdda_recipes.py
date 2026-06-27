@@ -14,6 +14,7 @@ its own recipe (forward link) or follow the "used as an ingredient in" list
 日本語 / …). Run it and your browser opens automatically.
 """
 import os
+import re
 import glob
 import json
 import html
@@ -61,6 +62,24 @@ UI_STRINGS = {
         "npc_loot_help": "Include groups carried by NPCs (NC_*) in 'Found in'. Off by default — they're noisy.",
         "group": "Loot group", "g_contains": "Can contain ({n})",
         "g_includes": "Includes groups ({n})", "g_partof": "Part of ({n})",
+        "nav_items": "Items", "nav_loot": "Loot sources", "nav_mechanics": "Mechanics",
+        "loot_title": "Loot sources",
+        "loot_hint": "Top-level loot groups — the entry points where loot actually "
+            "spawns on the map. Click one to drill into its sub-groups and items "
+            "(each with its spawn chance). {n} groups.",
+        "mech_title": "How it works (mechanics)",
+        "g_contents": "Contents ({n})",
+        "g_note_coll": "Collection — each entry rolls independently, so each % is its "
+            "own chance and the total can exceed 100%.",
+        "g_note_dist": "Distribution — exactly one entry is chosen by weight, so the "
+            "chances add up to 100%.",
+        "learn_more": "How probabilities work →", "inline_group": "(nested group)",
+        "pick_one": "pick 1 of:", "all_of": "all of:",
+        "dropped_by": "Dropped by ({n})", "placed_in": "Placed at ({n})",
+        "book": "Book", "book_skill": "Trains skill", "book_recipes": "Recipes it teaches ({n})",
+        "very_common": "Very common — found in most buildings. Top spots:",
+        "abilities": "What you can do", "actions": "Use / actions",
+        "techniques": "Melee techniques", "flags": "Flags",
     },
     "ko": {
         "brand": "CDDA 레시피", "search_ph": "아이템 이름 검색…", "mods": "모드",
@@ -85,6 +104,23 @@ UI_STRINGS = {
         "npc_loot_help": "'입수'에 NPC가 소지한 그룹(NC_*)도 포함. 기본 꺼짐 — 노이즈가 많습니다.",
         "group": "루트 그룹", "g_contains": "나올 수 있는 아이템 ({n})",
         "g_includes": "하위 그룹 ({n})", "g_partof": "상위 그룹 ({n})",
+        "nav_items": "아이템", "nav_loot": "입수처", "nav_mechanics": "메커니즘",
+        "loot_title": "입수처",
+        "loot_hint": "최상위 루트 그룹 — 맵에서 전리품이 실제로 생성되는 입수처입니다. "
+            "클릭하면 하위 그룹과 아이템(각각의 생성 확률 포함)으로 타고 내려갑니다. "
+            "그룹 {n}개.",
+        "mech_title": "동작 방식 (메커니즘)",
+        "g_contents": "구성 ({n})",
+        "g_note_coll": "collection — 각 항목이 독립적으로 굴려져, 각 %는 그 항목 자체의 "
+            "확률이고 합계가 100%를 넘을 수 있습니다.",
+        "g_note_dist": "distribution — 가중치로 딱 하나만 선택되므로, 확률의 합이 100%입니다.",
+        "learn_more": "확률이 계산되는 방식 →", "inline_group": "(중첩 그룹)",
+        "pick_one": "1개 선택:", "all_of": "모두 포함:",
+        "dropped_by": "드롭원 ({n})", "placed_in": "배치 위치 ({n})",
+        "book": "책", "book_skill": "훈련 스킬", "book_recipes": "배우는 제작법 ({n})",
+        "very_common": "매우 흔함 — 대부분의 건물에 있음. 확률 높은 곳:",
+        "abilities": "할 수 있는 것", "actions": "사용 동작",
+        "techniques": "근접 기술", "flags": "특성(플래그)",
     },
     "ja": {
         "brand": "CDDAレシピ", "search_ph": "アイテム名で検索…", "mods": "MOD",
@@ -109,6 +145,23 @@ UI_STRINGS = {
         "npc_loot_help": "「入手」にNPC所持グループ（NC_*）も含める。既定はオフ — ノイズが多いです。",
         "group": "ルートグループ", "g_contains": "入りうるアイテム ({n})",
         "g_includes": "内包グループ ({n})", "g_partof": "上位グループ ({n})",
+        "nav_items": "アイテム", "nav_loot": "入手元", "nav_mechanics": "仕組み",
+        "loot_title": "入手元",
+        "loot_hint": "最上位のルートグループ — マップで戦利品が実際に生成される入手元です。"
+            "クリックすると下位グループやアイテム（各生成確率つき）へ辿れます。"
+            "グループ {n}件。",
+        "mech_title": "仕組み（メカニズム）",
+        "g_contents": "構成 ({n})",
+        "g_note_coll": "collection — 各項目が独立して抽選され、各％はその項目自身の確率で、"
+            "合計が100％を超えることがあります。",
+        "g_note_dist": "distribution — 重みで1つだけ選ばれるため、確率の合計は100％です。",
+        "learn_more": "確率の計算方法 →", "inline_group": "（入れ子グループ）",
+        "pick_one": "1つ選択:", "all_of": "すべて含む:",
+        "dropped_by": "ドロップ元 ({n})", "placed_in": "配置場所 ({n})",
+        "book": "書籍", "book_skill": "訓練スキル", "book_recipes": "習得できるレシピ ({n})",
+        "very_common": "とても一般的 — ほとんどの建物にあり。確率の高い場所:",
+        "abilities": "できること", "actions": "使用・動作",
+        "techniques": "近接技", "flags": "フラグ",
     },
 }
 
@@ -136,6 +189,124 @@ def cat_name(code, lang):
     if not d:
         return code.replace("CC_", "").replace("_", " ").title()
     return d.get(lang) or d["en"]
+
+
+# Mechanics page: localized documentation of how the game data (and this tool's
+# numbers) actually work. Each value is a list of (heading, body-html) sections;
+# bodies are trusted internal HTML. Missing languages fall back to English.
+MECH_DOC = {
+    "en": [
+        ("Data vs. engine",
+         "<p>Cataclysm keeps almost all of its <b>content</b> as JSON under "
+         "<code>data/json/</code>. The C++ engine only knows the <i>mechanisms</i> "
+         "(how a recipe is crafted, how loot is rolled); the JSON says <i>what</i> "
+         "exists. This helper reads that JSON, so everything matches your exact "
+         "version and mods.</p>"),
+        ("copy-from inheritance",
+         "<p>An item often defines only a few fields and inherits the rest from a "
+         "parent through <code>copy-from</code>. The names, descriptions and stats "
+         "shown here are resolved by following that chain.</p>"),
+        ("Shared requirements (using / LIST)",
+         "<p>Recipes rarely spell out raw ingredients. They pull shared blocks from "
+         "<code>requirements/</code> via <code>using</code>, and a component tagged "
+         "<code>LIST</code> expands into the items of a named requirement. The "
+         "ingredient lists you see already have these expanded.</p>"),
+        ("Loot groups: collection vs distribution",
+         "<p>An <code>item_group</code> is a loot table, and its <code>subtype</code> "
+         "decides the probability math:</p><ul>"
+         "<li><b>collection</b> — every entry rolls <i>independently</i>. Its "
+         "<code>prob</code> is a plain percent (default 100), so the chances need "
+         "not add up to 100% and several entries can appear at once.</li>"
+         "<li><b>distribution</b> — exactly <i>one</i> entry is chosen, weighted by "
+         "<code>prob</code>. Each chance is <code>prob ÷ (sum of all prob)</code>, "
+         "so they add up to 100%.</li></ul>"),
+        ("Cascading down nested groups",
+         "<p>An entry can point at another group, which has its own subtype. To get "
+         "an item's overall chance you <b>multiply down the tree</b>: e.g. "
+         "P(a book in a school) = P(its sub-group is rolled) × P(that book within "
+         "the sub-group). If the same item is reachable by several paths, add those "
+         "chances together.</p>"),
+        ("Why the % is approximate",
+         "<p>The percentages shown are per-group spawn chances. The real in-game "
+         "odds also depend on how mapgen places the group — it may be rolled several "
+         "times, or only placed sometimes — plus item counts and containers, which "
+         "live in the map files, not the group. Treat the numbers as a solid guide, "
+         "not an exact rate.</p>"),
+    ],
+    "ko": [
+        ("데이터 vs. 엔진",
+         "<p>Cataclysm은 거의 모든 <b>콘텐츠</b>를 <code>data/json/</code> 아래 JSON으로 "
+         "보관합니다. C++ 엔진은 <i>메커니즘</i>(레시피가 어떻게 제작되는지, 전리품이 "
+         "어떻게 굴려지는지)만 알고, <i>무엇이</i> 존재하는지는 JSON이 정합니다. 이 도구는 "
+         "그 JSON을 직접 읽으므로 당신의 정확한 버전·모드와 일치합니다.</p>"),
+        ("copy-from 상속",
+         "<p>아이템은 보통 일부 필드만 정의하고 나머지는 <code>copy-from</code>으로 부모에서 "
+         "상속받습니다. 여기 표시되는 이름·설명·스탯은 그 사슬을 따라가 해석한 값입니다.</p>"),
+        ("공유 요구사항 (using / LIST)",
+         "<p>레시피는 원재료를 직접 적는 경우가 드뭅니다. <code>using</code>으로 "
+         "<code>requirements/</code>의 공유 블록을 끌어오고, <code>LIST</code>로 표시된 "
+         "구성요소는 명명된 요구사항의 아이템들로 펼쳐집니다. 화면의 재료 목록은 이미 이걸 "
+         "펼친 상태입니다.</p>"),
+        ("루트 그룹: collection vs distribution",
+         "<p><code>item_group</code>은 전리품 표이고, <code>subtype</code>에 따라 확률 계산이 "
+         "달라집니다:</p><ul>"
+         "<li><b>collection</b> — 각 항목이 <i>독립적으로</i> 굴려집니다. <code>prob</code>은 "
+         "그대로 퍼센트(기본 100)라, 확률 합이 100%가 아니어도 되고 여러 항목이 동시에 "
+         "나올 수 있습니다.</li>"
+         "<li><b>distribution</b> — 딱 <i>하나</i>만 <code>prob</code> 가중치로 선택됩니다. "
+         "각 확률은 <code>prob ÷ (모든 prob의 합)</code>이라 합이 100%입니다.</li></ul>"),
+        ("중첩 그룹 타고 내려가기",
+         "<p>항목이 또 다른 그룹을 가리킬 수 있고, 그 그룹도 자기 subtype을 가집니다. 어떤 "
+         "아이템의 전체 확률을 구하려면 <b>트리를 따라 곱하면</b> 됩니다: 예) P(학교에서 그 책) "
+         "= P(해당 하위 그룹이 굴려짐) × P(그 하위 그룹 안에서 그 책). 같은 아이템이 여러 "
+         "경로로 도달 가능하면 그 확률들을 더합니다.</p>"),
+        ("왜 %가 근사치인가",
+         "<p>표시된 퍼센트는 그룹 단위의 생성 확률입니다. 실제 게임 확률은 mapgen이 그 그룹을 "
+         "어떻게 배치하는지(여러 번 굴리거나, 가끔만 배치)와 아이템 개수·컨테이너에도 "
+         "좌우되는데, 이건 그룹이 아니라 맵 파일에 있습니다. 숫자는 정확한 비율이 아니라 "
+         "믿을 만한 길잡이로 보세요.</p>"),
+    ],
+    "ja": [
+        ("データ vs. エンジン",
+         "<p>Cataclysmはほぼ全ての<b>コンテンツ</b>を<code>data/json/</code>下のJSONとして"
+         "保持します。C++エンジンは<i>仕組み</i>（レシピの作り方、戦利品の抽選方法）だけを"
+         "知り、<i>何が</i>存在するかはJSONが決めます。本ツールはそのJSONを直接読むため、"
+         "お使いの正確なバージョン・MODと一致します。</p>"),
+        ("copy-from 継承",
+         "<p>アイテムは多くの場合一部のフィールドのみ定義し、残りは<code>copy-from</code>で"
+         "親から継承します。ここに表示される名前・説明・ステータスはその連鎖を辿って"
+         "解決した値です。</p>"),
+        ("共有要件 (using / LIST)",
+         "<p>レシピが原材料を直接書くことは稀です。<code>using</code>で"
+         "<code>requirements/</code>の共有ブロックを取り込み、<code>LIST</code>付きの"
+         "構成要素は名前付き要件のアイテム群に展開されます。表示中の材料リストは既に展開"
+         "済みです。</p>"),
+        ("ルートグループ: collection vs distribution",
+         "<p><code>item_group</code>は戦利品テーブルで、<code>subtype</code>で確率計算が"
+         "変わります:</p><ul>"
+         "<li><b>collection</b> — 各項目が<i>独立して</i>抽選されます。<code>prob</code>は"
+         "そのままパーセント（既定100）なので、合計が100％でなくてよく、複数同時に"
+         "出ることもあります。</li>"
+         "<li><b>distribution</b> — <code>prob</code>の重みで1つだけ選ばれます。各確率は"
+         "<code>prob ÷ (全probの合計)</code>で、合計は100％です。</li></ul>"),
+        ("入れ子グループを辿る",
+         "<p>項目が別のグループを指すことがあり、そのグループも独自のsubtypeを持ちます。"
+         "あるアイテムの全体確率を求めるには<b>木を辿って掛け算</b>します: 例) "
+         "P(学校でその本) = P(その下位グループが抽選) × P(下位グループ内でその本)。同じ"
+         "アイテムに複数の経路で到達できる場合はそれらの確率を足します。</p>"),
+        ("なぜ％は近似値か",
+         "<p>表示される％はグループ単位の生成確率です。実際のゲーム内確率は、mapgenがその"
+         "グループをどう配置するか（複数回抽選、または時々のみ配置）や、アイテム数・容器にも"
+         "左右され、これらはグループではなくマップファイルにあります。数値は正確な割合では"
+         "なく確かな目安として見てください。</p>"),
+    ],
+}
+
+
+# object "type" values that are real items (searchable, can have item pages)
+ITEM_TYPES = {"GENERIC", "COMESTIBLE", "ARMOR", "TOOL", "TOOL_ARMOR", "TOOLMOD",
+              "GUN", "GUNMOD", "MAGAZINE", "AMMO", "BOOK", "BIONIC_ITEM",
+              "ENGINE", "WHEEL", "PET_ARMOR", "CONTAINER", "BATTERY"}
 
 
 # in-memory app settings (single local user). Set from the Settings page.
@@ -240,13 +411,23 @@ class DataIndex:
         self.by_result = {}
         self.used_in = {}
         self.uncrafts = {}       # item id -> [uncraft entry, ...]
+        self.book_recipes = {}   # book id -> [(recipe result, level), ...]
+        self.flag_info = {}      # flag id -> info text (json_flag)
+        self.action_names = {}   # item_action id -> readable name
+        self.item_ids = []       # ids whose type is a real item (for search)
         self.cat_of = {}         # result id -> recipe category code (e.g. CC_WEAPON)
         self.by_cat = {}         # category code -> [result id, ...]
         self.item_groups_of = {}  # item id -> set(group id) it appears in (direct)
         self.group_parents = {}   # child group id -> set(parent group id)
         self.group_items = {}     # group id -> set(item id) it can spawn (direct)
         self.group_subgroups = {}  # group id -> set(child group id)
+        self.group_def = {}      # group id -> raw def (kept for probabilities)
+        self.group_dropped_by = {}  # group id -> set(monster id) (death_drops)
+        self.group_places = {}   # group id -> {location: chance or None} (mapgen)
         self._groups = []        # raw item_group defs, processed after load
+        self._monsters = []      # MONSTER defs with death_drops, processed after load
+        self._mapgens = []       # mapgen defs, processed after load
+        self._palettes = []      # palette defs, processed after load
         self._namecache = {}
         self._desccache = {}
         self.tr = lambda s: s
@@ -280,6 +461,19 @@ class DataIndex:
                 self.reqs[eid] = e
             elif t == "tool_quality" and isinstance(eid, str):
                 self.quals[eid] = name_str(e.get("name")) or eid
+            elif t == "json_flag" and isinstance(eid, str):
+                if isinstance(e.get("info"), str):
+                    self.flag_info[eid] = e["info"]
+            elif t == "item_action" and isinstance(eid, str):
+                nm = name_str(e.get("name"))
+                if nm:
+                    self.action_names[eid] = nm
+            elif t == "MONSTER" and e.get("death_drops") is not None:
+                self._monsters.append(e)
+            elif t == "mapgen":
+                self._mapgens.append(e)
+            elif t == "palette":
+                self._palettes.append(e)
             if isinstance(eid, str):
                 self.by_id.setdefault(eid, e)
 
@@ -293,15 +487,35 @@ class DataIndex:
                 self.cat_of[res] = r["category"]
             for iid in self._recipe_component_ids(r):
                 self.used_in.setdefault(iid, set()).add(res)
+            self._index_book_learn(r, res)
         for res, cat in self.cat_of.items():
             self.by_cat.setdefault(cat, []).append(res)
+        self.item_ids = [eid for eid, e in self.by_id.items()
+                         if isinstance(e, dict) and e.get("type") in ITEM_TYPES]
         self._index_groups()
+
+    def _index_book_learn(self, recipe, res):
+        """Reverse a recipe's book_learn so each book lists the recipes it teaches."""
+        def add(bid, lvl):
+            if isinstance(bid, str):
+                self.book_recipes.setdefault(bid, []).append((res, lvl))
+        bl = recipe.get("book_learn")
+        if isinstance(bl, list):
+            for b in bl:
+                if isinstance(b, list) and b:
+                    add(b[0], b[1] if len(b) > 1 else None)
+                elif isinstance(b, str):
+                    add(b, None)
+        elif isinstance(bl, dict):
+            for bid, v in bl.items():
+                add(bid, v.get("skill_level") if isinstance(v, dict) else None)
 
     def _index_groups(self):
         for g in self._groups:
             gid = g.get("id") or g.get("abstract")
             if not isinstance(gid, str):
                 continue
+            self.group_def[gid] = g
             items, subgroups = self._group_members(g)
             self.group_items.setdefault(gid, set()).update(items)
             self.group_subgroups.setdefault(gid, set()).update(subgroups)
@@ -310,6 +524,96 @@ class DataIndex:
             for sg in subgroups:
                 self.group_parents.setdefault(sg, set()).add(gid)
         self._groups = []
+        self._index_sources()
+
+    _REF_KEYS = ("item", "group", "item_group", "groups")
+
+    def _group_refs(self, node, out=None):
+        """(gid, chance) for every known item-group id referenced under a
+        reference key anywhere inside node. A ref-key string that isn't a known
+        group (e.g. a plain item id) is ignored."""
+        if out is None:
+            out = []
+        if isinstance(node, dict):
+            ch = node.get("chance")
+            for k, v in node.items():
+                if k in self._REF_KEYS:
+                    for x in (v if isinstance(v, list) else [v]):
+                        if isinstance(x, str) and x in self.group_def:
+                            out.append((x, ch))
+                        elif isinstance(x, (dict, list)):
+                            self._group_refs(x, out)
+                elif isinstance(v, (dict, list)):
+                    self._group_refs(v, out)
+        elif isinstance(node, list):
+            for x in node:
+                self._group_refs(x, out)
+        return out
+
+    def _index_sources(self):
+        """Reverse index: which monsters drop a group on death, and which map
+        locations place it (with the mapgen 'chance' when given)."""
+        def locs_of(mg):
+            # only real overmap places; nested-mapgen chunks have no location and
+            # would show as cryptic ids (e.g. 4x4_cr1), so they're left out
+            labels = []
+
+            def flat(x):
+                if isinstance(x, str):
+                    labels.append(x)
+                elif isinstance(x, list):
+                    for y in x:
+                        flat(y)
+            flat(mg.get("om_terrain"))
+            return labels
+
+        for mon in self._monsters:
+            mid = mon.get("id")
+            if not isinstance(mid, str):
+                continue
+            dd = mon.get("death_drops")
+            if isinstance(dd, str):                      # direct group reference
+                refs = [(dd, None)] if dd in self.group_def else []
+            else:                                        # inline group object
+                refs = self._group_refs(dd)
+            for gid, _ in refs:
+                self.group_dropped_by.setdefault(gid, set()).add(mid)
+
+        # palette id -> set(locations) of the mapgens that pull it in
+        pal_locs = {}
+        for mg in self._mapgens:
+            obj = mg.get("object") or {}
+            for p in (obj.get("palettes") or []):
+                if isinstance(p, str):
+                    pal_locs.setdefault(p, set()).update(locs_of(mg))
+
+        def add_place(gid, loc, ch):
+            if not loc:
+                return
+            d = self.group_places.setdefault(gid, {})
+            if loc not in d or (ch is not None and (d[loc] is None or ch > d[loc])):
+                d[loc] = ch
+
+        for mg in self._mapgens:
+            labels = locs_of(mg)
+            for gid, ch in self._group_refs(mg.get("object")):
+                for loc in labels:
+                    add_place(gid, loc, ch)
+
+        for pal in self._palettes:
+            pid = pal.get("id")
+            refs = self._group_refs(pal)
+            if not refs:
+                continue
+            targets = pal_locs.get(pid)
+            if targets:                       # only attribute to real places
+                for gid, ch in refs:
+                    for loc in targets:
+                        add_place(gid, loc, ch)
+
+        self._monsters = []
+        self._mapgens = []
+        self._palettes = []
 
     @staticmethod
     def _group_members(g):
@@ -356,6 +660,16 @@ class DataIndex:
         if not SETTINGS.get("npc_loot"):
             groups = [g for g in groups if not g.startswith("NC_")]
         return sorted(groups, key=str.lower)
+
+    def loc_name(self, loc):
+        """Readable, localized place name for an om_terrain/city_building id, or
+        None if it has no name (caller falls back to a cleaned id)."""
+        e = self.by_id.get(loc)
+        if e:
+            nm = name_str(e.get("name"))
+            if nm:
+                return self.tr(nm)
+        return None
 
     def raw_name(self, eid, _seen=None):
         if not isinstance(eid, str):
@@ -445,6 +759,101 @@ class DataIndex:
         rows.sort(key=lambda x: x[0].lower())
         return rows
 
+    def all_items(self):
+        rows = [(self.name(i), i) for i in self.item_ids]
+        rows.sort(key=lambda x: x[0].lower())
+        return rows
+
+    def book_info(self, rid):
+        """If rid (following copy-from) is a BOOK, the skill it trains and the
+        level range; else None. Novels etc. return {} (a book, but no skill)."""
+        seen, info, is_book = set(), {}, False
+        cur = rid
+        while isinstance(cur, str) and cur not in seen:
+            seen.add(cur)
+            e = self.by_id.get(cur)
+            if not e:
+                break
+            if e.get("type") == "BOOK":
+                is_book = True
+            for k in ("skill", "max_level", "required_level"):
+                if k not in info and e.get(k) is not None:
+                    info[k] = e[k]
+            cur = e.get("copy-from")
+        return info if is_book else None
+
+    def _chain(self, rid):
+        """The item def + its copy-from ancestors, most-derived first."""
+        out, seen, cur = [], set(), rid
+        while isinstance(cur, str) and cur not in seen:
+            seen.add(cur)
+            e = self.by_id.get(cur)
+            if not e:
+                break
+            out.append(e)
+            cur = e.get("copy-from")
+        return out
+
+    def flags_of(self, rid):
+        """Flags on an item, merging copy-from + extend, minus delete."""
+        flags = set()
+        for e in reversed(self._chain(rid)):   # parents first so child can delete
+            for f in (e.get("flags") or []):
+                if isinstance(f, str):
+                    flags.add(f)
+            ext = e.get("extend")
+            if isinstance(ext, dict):
+                for f in (ext.get("flags") or []):
+                    if isinstance(f, str):
+                        flags.add(f)
+            dl = e.get("delete")
+            if isinstance(dl, dict):
+                for f in (dl.get("flags") or []):
+                    flags.discard(f)
+        return flags
+
+    def qualities_of(self, rid):
+        for e in self._chain(rid):
+            q = e.get("qualities")
+            if q:
+                return [(it[0], it[1] if len(it) > 1 else 1)
+                        for it in q if isinstance(it, list) and it]
+        return []
+
+    def techniques_of(self, rid):
+        for e in self._chain(rid):
+            t = e.get("techniques")
+            if t:
+                return [x for x in t if isinstance(x, str)]
+        return []
+
+    def actions_of(self, rid):
+        """Readable labels for an item's use_action(s)."""
+        for e in self._chain(rid):
+            ua = e.get("use_action")
+            if ua is not None:
+                out, seen = [], set()
+                for x in (ua if isinstance(ua, list) else [ua]):
+                    lbl = None
+                    if isinstance(x, str):
+                        lbl = self.action_names.get(x) or x.replace("_", " ").lower()
+                    elif isinstance(x, dict):
+                        lbl = (name_str(x.get("name")) or name_str(x.get("menu_text"))
+                               or (x.get("type") or "").replace("_", " "))
+                    if lbl:
+                        lbl = self.tr(lbl)
+                        if lbl not in seen:
+                            seen.add(lbl)
+                            out.append(lbl)
+                return out
+        return []
+
+    def flag_desc(self, flag):
+        info = self.flag_info.get(flag)
+        if not info:
+            return None
+        return self.tr(re.sub(r"<[^>]+>", "", info)).strip()
+
 
 # ---------------------------------------------------------------------------
 # Caches: one index per (version, include-mods); one translator per (ver, loc)
@@ -512,6 +921,113 @@ def group_url(gid, ctx):
 
 def a_group(gid, ctx):
     return '<a class="chip" href="%s">%s</a>' % (group_url(gid, ctx), h(gid.replace("_", " ")))
+
+
+def _subtype_and_raw(node):
+    """(subtype, raw-entry-list) for either a group def or an inline
+    distribution/collection node."""
+    if isinstance(node.get("distribution"), list):
+        return "distribution", node["distribution"]
+    if isinstance(node.get("collection"), list):
+        return "collection", node["collection"]
+    st = node.get("subtype")
+    if st not in ("collection", "distribution"):
+        st = "collection"          # default / legacy "old" behaves like a collection
+    raw = node.get("entries")
+    if raw is None:
+        raw = node.get("items")
+    return st, (raw if isinstance(raw, list) else [])
+
+
+def _norm_entries(raw, subtype):
+    """Normalize an entry list and attach each entry's spawn 'frac' per the
+    parent subtype. An inline distribution/collection keeps its child list in
+    'inline' = (subtype, raw) so the caller can recurse and expand it."""
+    out = []
+    if not isinstance(raw, list):
+        return out
+    for e in raw:
+        if isinstance(e, list) and e and isinstance(e[0], str):
+            prob = e[1] if len(e) > 1 and isinstance(e[1], (int, float)) else 100
+            out.append({"kind": "item", "id": e[0], "prob": prob, "count": None, "inline": None})
+        elif isinstance(e, dict):
+            prob = e.get("prob", 100)
+            if not isinstance(prob, (int, float)):
+                prob = 100
+            if isinstance(e.get("item"), str):
+                out.append({"kind": "item", "id": e["item"], "prob": prob,
+                            "count": e.get("count") or e.get("charges"), "inline": None})
+            elif isinstance(e.get("group"), str):
+                out.append({"kind": "group", "id": e["group"], "prob": prob,
+                            "count": None, "inline": None})
+            elif isinstance(e.get("distribution"), list):
+                out.append({"kind": "inline", "id": None, "prob": prob, "count": None,
+                            "inline": ("distribution", e["distribution"])})
+            elif isinstance(e.get("collection"), list):
+                out.append({"kind": "inline", "id": None, "prob": prob, "count": None,
+                            "inline": ("collection", e["collection"])})
+    if subtype == "distribution":
+        total = sum(max(0, x["prob"]) for x in out) or 1
+        for x in out:
+            x["frac"] = max(0, x["prob"]) / total
+    else:
+        for x in out:
+            x["frac"] = min(max(x["prob"], 0), 100) / 100.0
+    return out
+
+
+def pct_html(frac):
+    p = frac * 100
+    if p >= 99.5:
+        return "100%"
+    if p >= 1:
+        return "~%d%%" % round(p)
+    if p > 0:
+        return "<1%"
+    return "0%"
+
+
+def _count_html(c):
+    if not c:
+        return ""
+    shown = "%s–%s" % (c[0], c[1]) if isinstance(c, list) and len(c) == 2 else c
+    return ' <span class="qty">×%s</span>' % h(shown)
+
+
+_LOC_DROP = {"basement", "roof", "first", "second", "third", "ground", "upper",
+             "lower", "north", "south", "east", "west", "ne", "nw", "se", "sw",
+             "open", "closed", "interior", "entrance"}
+
+
+def _loc_base(loc):
+    """Collapse a mapgen om_terrain id to its base place: drop variant tokens
+    (numbers, single letters, floor/direction qualifiers) so house_20 /
+    house_24_roof -> 'house'."""
+    loc = loc.replace("palette:", "")
+    toks = [t for t in loc.split("_")
+            if t and not t.isdigit() and len(t) > 1 and t.lower() not in _LOC_DROP]
+    return " ".join(toks) if toks else loc.replace("_", " ")
+
+
+def entries_html(idx, ctx, raw, subtype, depth=0):
+    """Recursive <li> rows for a group's entries. Inline anonymous groups are
+    expanded in place (labelled 'pick 1 of' / 'all of'), so nothing is opaque."""
+    rows = []
+    for e in _norm_entries(raw, subtype):
+        if e["kind"] == "item":
+            label, sub = a_item(idx, e["id"], ctx), ""
+        elif e["kind"] == "group":
+            label, sub = a_group(e["id"], ctx), ""
+        else:
+            sub_st, sub_raw = e["inline"]
+            label = '<span class="slot">%s</span>' % h(
+                T(ctx, "pick_one" if sub_st == "distribution" else "all_of"))
+            sub = ("" if depth >= 6 else
+                   '<ul class="problist sub">%s</ul>'
+                   % entries_html(idx, ctx, sub_raw, sub_st, depth + 1))
+        rows.append('<li><span class="prob">%s</span><div class="ent">%s%s%s</div></li>'
+                    % (pct_html(e["frac"]), label, _count_html(e["count"]), sub))
+    return "".join(rows)
 
 
 def group_html(idx, group, ctx, depth=0):
@@ -784,10 +1300,49 @@ table.cat tr:hover td { background: var(--hover); }
 .setrow { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0; }
 .setrow .help { color: var(--muted); font-size: 13px; }
 .saved { color: var(--green); margin-left: 8px; }
+/* left index sidebar + main column */
+.layout { display: flex; align-items: flex-start; max-width: 1180px; margin: 0 auto; }
+.layout > .wrap { flex: 1; min-width: 0; max-width: 920px; margin: 18px auto; }
+.side { position: sticky; top: 53px; align-self: flex-start; width: 184px; flex: none;
+        display: flex; flex-direction: column; gap: 2px; padding: 16px 8px;
+        min-height: calc(100vh - 53px); }
+.side .navlink { display: block; padding: 8px 12px; border-radius: 8px; font-size: 14px;
+        color: var(--fg); text-decoration: none; }
+.side .navlink:hover { background: var(--hover); }
+.side .navlink.active { background: var(--hover); color: var(--link); font-weight: 600; }
+.side .navspacer { flex: 1; min-height: 24px; }
+@media (max-width: 720px) {
+  .layout { flex-direction: column; }
+  .side { position: static; flex-direction: row; flex-wrap: wrap; width: auto;
+          min-height: 0; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .side .navspacer { display: none; }
+}
+/* loot-group probability list + mechanism note */
+.mechnote { color: var(--muted); font-size: 13px; background: var(--hover);
+        border-radius: 8px; padding: 8px 11px; margin: 12px 0; }
+.mechnote a { color: var(--link); text-decoration: none; white-space: nowrap; }
+ul.problist { list-style: none; margin: 8px 0; padding: 0; }
+ul.problist li { display: flex; align-items: flex-start; gap: 10px; padding: 4px 2px;
+        border-bottom: 1px solid var(--border); }
+ul.problist .ent { flex: 1; min-width: 0; }
+ul.problist.sub { margin: 6px 0 2px; padding-left: 12px; border-left: 2px solid var(--border); }
+ul.problist.sub li { border-bottom: none; padding: 2px 0; }
+.slot { color: var(--faint); font-size: 12px; font-style: italic; }
+.chip.loc .locq { color: var(--faint); font-size: 11px; margin-left: 4px; }
+.chip.flag { color: var(--muted); cursor: help; font: 12px ui-monospace, Consolas, monospace; }
+.chip.flag:hover { border-color: var(--link); }
+.prob { font: 12px ui-monospace, Consolas, monospace; color: var(--muted);
+        min-width: 3.6em; text-align: right; flex: none; padding-top: 1px; }
+/* mechanics doc page */
+.mech { max-width: 680px; } .mech h2 { font-size: 16px; margin: 20px 0 6px; }
+.mech p { margin: 6px 0; line-height: 1.55; } .mech li { margin: 4px 0; line-height: 1.5; }
+.mech ul { margin: 6px 0; padding-left: 20px; }
+.mech code { background: var(--hover); border-radius: 4px; padding: 0 4px;
+        font: 12px ui-monospace, Consolas, monospace; }
 """
 
 
-def page(title, body, ctx, q=""):
+def page(title, body, ctx, q="", nav=None):
     locs = locales_for(ctx["ver"])
     order = ["en", "ko", "ja"]
     codes = sorted(locs.keys(), key=lambda c: (order.index(c) if c in order else 99, c))
@@ -822,7 +1377,6 @@ def page(title, body, ctx, q=""):
     %(mods_hidden)s
     <input type=search name="q" value="%(q)s" placeholder="%(search_ph)s" autofocus>
   </form>
-  <a class="gear" href="/settings?ver=%(ver)d&lang=%(lang)s%(mods_q)s" title="%(settings)s">⚙</a>
 </header>""" % {
         "action": action, "hidden": hidden, "vers": vers, "langs": langs,
         "mods_chk": mods_chk, "ver": ctx["ver"], "lang": h(ctx["lang"]),
@@ -836,31 +1390,70 @@ def page(title, body, ctx, q=""):
               "var r=s.querySelector('.node.root');if(!r)return;"
               "var a=r.getBoundingClientRect(),b=s.getBoundingClientRect();"
               "s.scrollLeft+=(a.left+a.width/2)-(b.left+b.width/2);});});</script>")
+    # left index/nav; settings live at the bottom of it (not a top-corner gear)
+    qsuf = "ver=%d&lang=%s%s" % (ctx["ver"], h(ctx["lang"]), "&mods=1" if ctx["mods"] else "")
+
+    def nl(key, path, icon, label):
+        cls = "navlink active" if nav == key else "navlink"
+        return '<a class="%s" href="%s?%s">%s %s</a>' % (cls, path, qsuf, icon, h(label))
+
+    side = ('<nav class="side">%s%s%s<div class="navspacer"></div>%s</nav>' % (
+        nl("items", "/", "📦", T(ctx, "nav_items")),
+        nl("loot", "/loot", "🎒", T(ctx, "nav_loot")),
+        nl("mechanics", "/mechanics", "📖", T(ctx, "nav_mechanics")),
+        nl("settings", "/settings", "⚙", T(ctx, "settings"))))
     return ("<!doctype html><html><head><meta charset=utf-8>"
             "<meta name=viewport content='width=device-width,initial-scale=1'>"
-            "<title>%s</title><style>%s</style></head><body>%s<div class='wrap'>%s</div>%s</body></html>"
-            % (h(title), PAGE_CSS, header, body, script))
+            "<title>%s</title><style>%s</style></head><body>%s"
+            "<div class='layout'>%s<div class='wrap'>%s</div></div>%s</body></html>"
+            % (h(title), PAGE_CSS, header, side, body, script))
+
+
+def _result_section(label, total, links, ctx):
+    shown = links[:400]
+    more = ("<p class='muted'>%s</p>" % h(T(ctx, "more", n=total - len(shown)))
+            if total > len(shown) else "")
+    return ('<div class="section">%s · %d</div><div class="results">%s</div>%s'
+            % (h(label), total, "".join(shown), more))
 
 
 def render_search(ctx, q):
     idx = get_index(ctx["ver"], ctx["mods"])
     idx.tr = get_translator(ctx["ver"], ctx["lang"])
-    rows = idx.craftable()
     if not q.strip():
-        body = '<p class="hint">%s</p>' % h(T(ctx, "hint", n=len(rows), r=len(idx.recipes)))
-        return page(T(ctx, "brand"), body, ctx, q)
+        craft = idx.craftable()
+        body = '<p class="hint">%s</p>' % h(T(ctx, "hint", n=len(craft), r=len(idx.recipes)))
+        return page(T(ctx, "brand"), body, ctx, q, nav="items")
     ql = q.strip().lower()
-    # cross-language: match the localized name, the English name, or the id
-    rows = [(disp, rid) for disp, rid in rows
-            if ql in disp.lower() or ql in idx.raw_name(rid).lower() or ql in rid.lower()]
-    shown = rows[:500]
-    lst = "".join('<a href="%s">%s<span class="rid">%s</span></a>'
-                  % (item_url(rid, ctx), h(disp), h(rid)) for disp, rid in shown)
-    more = ("<p class='muted'>%s</p>" % h(T(ctx, "more", n=len(rows) - len(shown)))
-            if len(rows) > len(shown) else "")
-    body = ('<div class="results">%s</div>%s'
-            % (lst or "<p class='muted'>%s</p>" % h(T(ctx, "no_match")), more))
-    return page("%s — CDDA Recipes" % q, body, ctx, q)
+
+    # items: match name (localized + English), id, description text, or a flag
+    def hit(disp, rid):
+        if ql in disp.lower() or ql in idx.raw_name(rid).lower() or ql in rid.lower():
+            return True
+        d = idx.desc(rid)
+        if d and ql in d.lower():
+            return True
+        rd = idx.raw_desc(rid)
+        if rd and ql in rd.lower():
+            return True
+        return any(ql in f.lower() for f in idx.flags_of(rid))
+    items = [(disp, rid) for disp, rid in idx.all_items() if hit(disp, rid)]
+    # loot groups: match the id, raw or spaced
+    groups = sorted(g for g in idx.group_def
+                    if ql in g.lower() or ql in g.replace("_", " ").lower())
+
+    sections = []
+    if items:
+        links = ['<a href="%s">%s<span class="rid">%s</span></a>'
+                 % (item_url(rid, ctx), h(disp), h(rid)) for disp, rid in items]
+        sections.append(_result_section(T(ctx, "nav_items"), len(items), links, ctx))
+    if groups:
+        links = ['<a href="%s">%s<span class="rid">%s</span></a>'
+                 % (group_url(g, ctx), h(g.replace("_", " ")), h(g)) for g in groups]
+        sections.append(_result_section(T(ctx, "nav_loot"), len(groups), links, ctx))
+
+    body = "".join(sections) or "<p class='muted'>%s</p>" % h(T(ctx, "no_match"))
+    return page("%s — CDDA Recipes" % q, body, ctx, q, nav="items")
 
 
 def _stats_html(idx, ctx, rid):
@@ -887,6 +1480,42 @@ def _stats_html(idx, ctx, rid):
     return '<div class="stats">%s</div>' % "  ·  ".join(bits)
 
 
+def _abilities_html(idx, ctx, rid):
+    """What you can do with the item: tool qualities, use actions, melee
+    techniques, and its flags (with descriptions on hover)."""
+    def field(label, value_html):
+        return ('<div class="f"><span class="k">%s</span><span class="v">%s</span></div>'
+                % (h(label), value_html))
+
+    rows = []
+    quals = idx.qualities_of(rid)
+    if quals:
+        rows.append(field(T(ctx, "toolq"), ", ".join(
+            "%s&nbsp;%s" % (h(idx.tr(idx.quals.get(q, q))), h(lv)) for q, lv in quals)))
+    acts = idx.actions_of(rid)
+    if acts:
+        rows.append(field(T(ctx, "actions"), ", ".join(h(a) for a in acts)))
+    techs = idx.techniques_of(rid)
+    if techs:
+        rows.append(field(T(ctx, "techniques"),
+                          ", ".join(h(idx.name(t)) for t in techs)))
+    flags = sorted(idx.flags_of(rid))
+    flag_html = ""
+    if flags:
+        chips = []
+        for f in flags:
+            d = idx.flag_desc(f)
+            tip = ' title="%s"' % h(d) if d else ""
+            chips.append('<span class="chip flag"%s>%s</span>' % (tip, h(f)))
+        flag_html = ('<div class="f"><span class="k">%s</span>'
+                     '<span class="v"><div class="chips">%s</div></span></div>'
+                     % (h(T(ctx, "flags")), "".join(chips)))
+    if not rows and not flag_html:
+        return ""
+    return ('<div class="recipe"><div class="rtitle">🛠 %s</div>%s%s</div>'
+            % (h(T(ctx, "abilities")), "".join(rows), flag_html))
+
+
 def render_item(ctx):
     idx = get_index(ctx["ver"], ctx["mods"])
     idx.tr = get_translator(ctx["ver"], ctx["lang"])
@@ -897,6 +1526,7 @@ def render_item(ctx):
     if desc:
         parts.append('<div class="desc">%s</div>' % h(desc))
     parts.append(_stats_html(idx, ctx, rid))
+    parts.append(_abilities_html(idx, ctx, rid))
 
     recipes = idx.by_result.get(rid, [])
     if recipes:
@@ -916,6 +1546,34 @@ def render_item(ctx):
                      '<ul class="ing">%s</ul></div>'
                      % (h(T(ctx, "disassembles")), items))
 
+    # if this item is a book: the skill it trains + the recipes it teaches
+    bi = idx.book_info(rid)
+    if bi is not None:
+        rows = []
+        sk = bi.get("skill")
+        if sk:
+            lo = bi.get("required_level") or 0
+            hi = bi.get("max_level")
+            lvl = (" <span class=\"diff\">%s %s–%s</span>" % (h(T(ctx, "lv")), h(lo), h(hi))
+                   if hi is not None else "")
+            rows.append('<div class="f"><span class="k">%s</span>'
+                        '<span class="v">%s%s</span></div>'
+                        % (h(T(ctx, "book_skill")), h(idx.name(sk)), lvl))
+        learn, seen = [], set()
+        for resv, _lv in sorted(idx.book_recipes.get(rid, ()),
+                                key=lambda x: idx.name(x[0]).lower()):
+            if resv not in seen:
+                seen.add(resv)
+                learn.append('<a class="chip" href="%s">%s</a>'
+                             % (item_url(resv, ctx), h(idx.name(resv))))
+        if rows or learn:
+            box = "".join(rows)
+            if learn:
+                box += ('<div class="section">%s</div><div class="chips">%s</div>'
+                        % (h(T(ctx, "book_recipes", n=len(learn))), "".join(learn)))
+            parts.append('<div class="recipe"><div class="rtitle">📖 %s</div>%s</div>'
+                         % (h(T(ctx, "book")), box))
+
     # where it's found (loot/item groups) — clickable, like items; collapse if long
     locs = idx.found_in(rid)
     if locs:
@@ -933,7 +1591,7 @@ def render_item(ctx):
                         for u in users)
         parts.append('<div class="section">%s</div><div class="chips">%s</div>'
                      % (h(T(ctx, "used_in", n=len(users))), chips))
-    return page("%s — CDDA Recipes" % title, "".join(parts), ctx)
+    return page("%s — CDDA Recipes" % title, "".join(parts), ctx, nav="items")
 
 
 def render_group(ctx, gid):
@@ -949,18 +1607,66 @@ def render_group(ctx, gid):
         parts.append('<div class="section">%s</div><div class="chips">%s</div>'
                      % (h(T(ctx, key, n=n)), chips_html))
 
-    items = sorted(idx.group_items.get(gid, ()), key=lambda x: idx.name(x).lower())
-    if items:
-        section("g_contains", "".join(
-            '<a class="chip" href="%s">%s</a>' % (item_url(it, ctx), h(idx.name(it)))
-            for it in items), len(items))
-    subs = sorted(idx.group_subgroups.get(gid, ()))
-    if subs:
-        section("g_includes", "".join(a_group(s, ctx) for s in subs), len(subs))
+    g = idx.group_def.get(gid)
+    if g is not None:
+        st, raw = _subtype_and_raw(g)
+        note = T(ctx, "g_note_coll" if st == "collection" else "g_note_dist")
+        qsuf = "ver=%d&lang=%s%s" % (ctx["ver"], h(ctx["lang"]),
+                                     "&mods=1" if ctx["mods"] else "")
+        parts.append('<div class="mechnote">%s &nbsp;<a href="/mechanics?%s">%s</a></div>'
+                     % (h(note), qsuf, h(T(ctx, "learn_more"))))
+        rows = entries_html(idx, ctx, raw, st)
+        if rows:
+            n = len(_norm_entries(raw, st))
+            parts.append('<div class="section">%s</div><ul class="problist">%s</ul>'
+                         % (h(T(ctx, "g_contents", n=n)), rows))
+    else:
+        # fallback: older set-based view (no raw def captured)
+        items = sorted(idx.group_items.get(gid, ()), key=lambda x: idx.name(x).lower())
+        if items:
+            section("g_contains", "".join(
+                '<a class="chip" href="%s">%s</a>' % (item_url(it, ctx), h(idx.name(it)))
+                for it in items), len(items))
+        subs = sorted(idx.group_subgroups.get(gid, ()))
+        if subs:
+            section("g_includes", "".join(a_group(s, ctx) for s in subs), len(subs))
+
+    # where/when it triggers: monster death drops + map placements
+    drops = sorted(idx.group_dropped_by.get(gid, ()), key=lambda x: idx.name(x).lower())
+    if drops:
+        section("dropped_by", "".join(
+            '<a class="chip" href="%s">%s</a>' % (item_url(d, ctx), h(idx.name(d)))
+            for d in drops), len(drops))
+    places = idx.group_places.get(gid) or {}
+    if places:
+        # resolve each location to its readable place name (variants like
+        # house_20 / house_24 share a name and collapse), keeping the best chance
+        agg = {}
+        for loc, ch in places.items():
+            label = idx.loc_name(loc) or _loc_base(loc)
+            if label not in agg or (ch is not None and (agg[label] is None or ch > agg[label])):
+                agg[label] = ch
+
+        def loc_chip(name, ch):
+            sfx = "" if ch is None else ' <span class="locq">%s%%</span>' % h(ch)
+            return '<span class="chip loc">%s%s</span>' % (h(name), sfx)
+        # most-likely places first, then alphabetical
+        rows = sorted(agg.items(), key=lambda kv: (-(kv[1] or 0), kv[0].lower()))
+        cap = 24
+        shown = rows[:cap]
+        chips = "".join(loc_chip(l, c) for l, c in shown)
+        if len(rows) > cap:
+            chips += '<span class="chip loc">+%d</span>' % (len(rows) - cap)
+        # ubiquitous groups (trash, etc.): lead with a plain-language summary
+        lead = ('<span class="muted" style="font-size:13px">%s</span> '
+                % h(T(ctx, "very_common")) if len(rows) > 60 else "")
+        parts.append('<div class="section">%s</div>%s<div class="chips">%s</div>'
+                     % (h(T(ctx, "placed_in", n=len(rows))), lead, chips))
+
     parents = sorted(idx.group_parents.get(gid, ()))
     if parents:
         section("g_partof", "".join(a_group(p, ctx) for p in parents), len(parents))
-    return page("%s — CDDA Recipes" % gid, "".join(parts), ctx)
+    return page("%s — CDDA Recipes" % gid, "".join(parts), ctx, nav="loot")
 
 
 def render_landing(ctx):
@@ -976,7 +1682,7 @@ def render_landing(ctx):
                         h(cat_name(c, ctx["lang"])), h(T(ctx, "items_n", n=len(idx.by_cat[c])))))
     body = ('<p class="hint">%s</p><div class="catgrid">%s</div>'
             % (h(T(ctx, "browse_hint")), "".join(cards)))
-    return page(T(ctx, "brand"), body, ctx)
+    return page(T(ctx, "brand"), body, ctx, nav="items")
 
 
 def _item_level(idx, rid):
@@ -1031,7 +1737,8 @@ def render_category(ctx, cat, skill, maxlv):
     head = ('<a class="item" href="/?%s">%s</a><h1 class="item">%s <span class="idtag">(%s)</span></h1>'
             % (base, h(T(ctx, "all_cats")), h(cat_name(cat, ctx["lang"])),
                h(T(ctx, "items_n", n=len(rows)))))
-    return page("%s — CDDA Recipes" % cat_name(cat, ctx["lang"]), head + filters + table, ctx)
+    return page("%s — CDDA Recipes" % cat_name(cat, ctx["lang"]),
+                head + filters + table, ctx, nav="items")
 
 
 def render_settings(ctx, saved):
@@ -1049,7 +1756,30 @@ def render_settings(ctx, saved):
         % (h(T(ctx, "settings")), saved_tag, ctx["ver"], h(ctx["lang"]),
            '<input type=hidden name="mods" value="1">' if ctx["mods"] else "",
            " checked" if npc else "", h(T(ctx, "npc_loot")), h(T(ctx, "npc_loot_help"))))
-    return page("%s — CDDA Recipes" % T(ctx, "settings"), body, ctx)
+    return page("%s — CDDA Recipes" % T(ctx, "settings"), body, ctx, nav="settings")
+
+
+def render_loot(ctx):
+    """Browse loot from the top: root groups (not nested under any other group)
+    are the entry points mapgen actually places. Click to drill down."""
+    idx = get_index(ctx["ver"], ctx["mods"])
+    idx.tr = get_translator(ctx["ver"], ctx["lang"])
+    roots = [gid for gid in idx.group_def if not idx.group_parents.get(gid)]
+    if not SETTINGS.get("npc_loot"):
+        roots = [g for g in roots if not g.startswith("NC_")]
+    roots.sort(key=str.lower)
+    chips = "".join(a_group(g, ctx) for g in roots)
+    body = ('<h1 class="item">%s</h1><p class="hint">%s</p><div class="chips">%s</div>'
+            % (h(T(ctx, "loot_title")), h(T(ctx, "loot_hint", n=len(roots))), chips))
+    return page(T(ctx, "loot_title"), body, ctx, nav="loot")
+
+
+def render_mechanics(ctx):
+    doc = MECH_DOC.get(ctx["lang"]) or MECH_DOC["en"]
+    secs = "".join("<h2>%s</h2>%s" % (h(head), body) for head, body in doc)
+    body = ('<h1 class="item">%s</h1><div class="mech">%s</div>'
+            % (h(T(ctx, "mech_title")), secs))
+    return page(T(ctx, "mech_title"), body, ctx, nav="mechanics")
 
 
 # ---------------------------------------------------------------------------
@@ -1095,6 +1825,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(render_item(ctx))
             elif u.path == "/group" and first("group"):
                 self._send(render_group(ctx, first("group")))
+            elif u.path == "/loot":
+                self._send(render_loot(ctx))
+            elif u.path == "/mechanics":
+                self._send(render_mechanics(ctx))
             elif u.path == "/settings":
                 saved = first("save") == "1"
                 if saved:                       # checkbox absent => unchecked

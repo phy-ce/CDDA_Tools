@@ -544,38 +544,51 @@ def _recipe_comps(idx, recipe):
     return comps
 
 
-def _vtree_node(idx, group, ctx, depth, seen, budget):
-    """One ingredient group -> one <li> in the visual tree. The group's OR
-    alternatives are shown inline (reusing group_html); the first craftable
-    alternative is expanded as indented children, so you follow a real tree."""
-    label = group_html(idx, group, ctx)
-    follow = None
-    for entry in group:
-        if isinstance(entry, list) and entry:
-            iid = entry[0]
-            is_list = len(entry) > 2 and entry[2] == "LIST"
-            if not is_list and iid in idx.by_result and iid not in seen:
-                follow = iid
-                break
+def _otree_node(idx, group, ctx, depth, seen, budget):
+    """One ingredient group -> one compact box node in the org-chart tree. The
+    box shows a single representative item (the craftable one we expand, else
+    the first) + qty, with a '+N' badge when the group has OR alternatives. The
+    representative's sub-recipe branches into child boxes below it."""
+    entries = [e for e in group if isinstance(e, list) and e]
+    if not entries:
+        return '<li><div class="node">?</div></li>'
+    follow = next((e for e in entries
+                   if not (len(e) > 2 and e[2] == "LIST")
+                   and e[0] in idx.by_result and e[0] not in seen), None)
+    primary = follow or entries[0]
+    pid = primary[0]
+    cnt = primary[1] if len(primary) > 1 else 1
+    is_list = len(primary) > 2 and primary[2] == "LIST"
+    label = h(idx.name(pid)) if is_list else a_item(idx, pid, ctx)
+    qty = "" if is_list else ' <span class="qty">×%s</span>' % h(cnt)
+    alts = len(entries) - 1
+    badge = ""
+    if alts > 0:
+        others = ", ".join(idx.name(e[0]) for e in entries if e is not primary)
+        badge = ' <span class="alt" title="%s">+%d</span>' % (h(others), alts)
+    box = '<div class="node">%s%s%s</div>' % (label, qty, badge)
     kids = ""
     if follow and depth > 0 and budget[0] > 0:
         budget[0] -= 1
-        comps = _recipe_comps(idx, idx.by_result[follow][0])
-        kids = "<ul class=\"vtree\">%s</ul>" % "".join(
-            _vtree_node(idx, g, ctx, depth - 1, seen | {follow}, budget)
+        comps = _recipe_comps(idx, idx.by_result[pid][0])
+        kids = "<ul>%s</ul>" % "".join(
+            _otree_node(idx, g, ctx, depth - 1, seen | {pid}, budget)
             for g in comps if isinstance(g, list))
-    return "<li>%s%s</li>" % (label, kids)
+    return "<li>%s%s</li>" % (box, kids)
 
 
 def tree_block(idx, recipe, ctx):
     ids = idx._recipe_component_ids(recipe)
     if not any(i in idx.by_result for i in ids):
         return ""   # nothing craftable to expand
-    budget = [200]
-    body = "".join(_vtree_node(idx, g, ctx, 5, set(), budget)
-                   for g in _recipe_comps(idx, recipe) if isinstance(g, list))
+    budget = [80]
+    children = "".join(_otree_node(idx, g, ctx, 2, set(), budget)
+                       for g in _recipe_comps(idx, recipe) if isinstance(g, list))
+    root = a_item(idx, recipe.get("result", ""), ctx)
+    tree = ('<ul class="otree"><li><div class="node root">%s</div>'
+            '<ul>%s</ul></li></ul>' % (root, children))
     return ('<details class="treebox" open><summary>🌳 %s</summary>'
-            '<ul class="vtree root">%s</ul></details>' % (h(T(ctx, "tree")), body))
+            '<div class="treescroll">%s</div></details>' % (h(T(ctx, "tree")), tree))
 
 
 def recipe_html(idx, recipe, ctx, n=None):
@@ -730,17 +743,29 @@ a.gear:hover { color: var(--fg); }
 .stats { color: var(--muted); font-size: 13px; margin: 2px 0 4px; }
 details.treebox { margin-top: 10px; }
 details.treebox > summary { cursor: pointer; color: var(--green); font-weight: 600; }
-/* the real indented tree, with connector lines */
-ul.vtree { list-style: none; margin: 4px 0 0; padding-left: 22px; }
-ul.vtree.root { padding-left: 4px; margin-top: 6px; }
-ul.vtree li { position: relative; padding: 1px 0 1px 16px; line-height: 1.55; }
-ul.vtree li::before { content: ""; position: absolute; left: 0; top: 0;
-        height: 100%; border-left: 1px solid var(--border2); }
-ul.vtree li:last-child::before { height: 0.95em; }
-ul.vtree li::after { content: ""; position: absolute; left: 0; top: 0.95em;
-        width: 11px; border-top: 1px solid var(--border2); }
-ul.vtree.root > li { padding-left: 0; }
-ul.vtree.root > li::before, ul.vtree.root > li::after { display: none; }
+/* org-chart style tree: boxes connected by right-angle lines that branch/merge */
+.treescroll { overflow-x: auto; padding: 8px 0 4px; }
+ul.otree, ul.otree ul { position: relative; display: flex; justify-content: center;
+        list-style: none; margin: 0; padding: 20px 0 0; }
+ul.otree { padding-top: 2px; width: max-content; min-width: 100%; }
+ul.otree li { position: relative; padding: 20px 9px 0; text-align: center; }
+/* the elbow: each child draws a half-bus to the centre, plus a drop to itself */
+ul.otree li::before, ul.otree li::after { content: ""; position: absolute; top: 0;
+        right: 50%; width: 50%; height: 20px; border-top: 1px solid var(--border2); }
+ul.otree li::after { right: auto; left: 50%; border-left: 1px solid var(--border2); }
+ul.otree li:only-child::before, ul.otree li:only-child::after { display: none; }
+ul.otree li:only-child { padding-top: 20px; }
+ul.otree li:first-child::before, ul.otree li:last-child::after { border: 0 none; }
+ul.otree li:last-child::before { border-right: 1px solid var(--border2);
+        border-radius: 0 6px 0 0; }
+ul.otree li:first-child::after { border-radius: 6px 0 0 0; }
+ul.otree ul::before { content: ""; position: absolute; top: 0; left: 50%;
+        height: 20px; border-left: 1px solid var(--border2); }
+ul.otree .node { display: inline-block; border: 1px solid var(--border);
+        background: var(--panel2); border-radius: 8px; padding: 5px 10px; white-space: nowrap; }
+ul.otree .node.root { border-color: var(--link); font-weight: 600; }
+ul.otree .node .alt { font-size: 11px; color: var(--muted); background: var(--hover);
+        border-radius: 4px; padding: 0 4px; margin-left: 2px; cursor: help; }
 /* category grid + listing table + settings */
 .catgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
         gap: 10px; margin-top: 14px; }
@@ -805,10 +830,16 @@ def page(title, body, ctx, q=""):
         "mods_hidden": '<input type=hidden name="mods" value="1">' if ctx["mods"] else "",
         "brand": h(T(ctx, "brand")), "mods_label": h(T(ctx, "mods")),
         "search_ph": h(T(ctx, "search_ph")), "q": h(q), "settings": h(T(ctx, "settings"))}
+    # scroll each crafting tree so its (centered) root box is in view on load
+    script = ("<script>addEventListener('load',function(){"
+              "document.querySelectorAll('.treescroll').forEach(function(s){"
+              "var r=s.querySelector('.node.root');if(!r)return;"
+              "var a=r.getBoundingClientRect(),b=s.getBoundingClientRect();"
+              "s.scrollLeft+=(a.left+a.width/2)-(b.left+b.width/2);});});</script>")
     return ("<!doctype html><html><head><meta charset=utf-8>"
             "<meta name=viewport content='width=device-width,initial-scale=1'>"
-            "<title>%s</title><style>%s</style></head><body>%s<div class='wrap'>%s</div></body></html>"
-            % (h(title), PAGE_CSS, header, body))
+            "<title>%s</title><style>%s</style></head><body>%s<div class='wrap'>%s</div>%s</body></html>"
+            % (h(title), PAGE_CSS, header, body, script))
 
 
 def render_search(ctx, q):

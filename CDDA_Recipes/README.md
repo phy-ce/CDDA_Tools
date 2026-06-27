@@ -51,8 +51,10 @@ press **Ctrl+C** in it.
 - **Click any item** to jump to it — a *forward* link on an ingredient/tool shows
   how to make that thing; the *"used as an ingredient in"* chips at the bottom are
   the *backlinks* the other way. Use your browser's Back/Forward to retrace.
-- **🌳 Crafting tree** — each recipe shows an indented tree that follows each
-  ingredient down into its own sub-recipe, so you see the whole chain at a glance.
+- **🌳 Crafting tree** — each recipe shows a node-graph diagram (boxes joined by
+  branching connector lines) of the product and its sub-ingredients. Each box is a
+  single item (`+N` marks how many OR alternatives it has); click an item to focus
+  its own tree, or scroll the diagram for wide chains.
 - **Found in** — loot/item groups the item spawns in (count shown; long lists
   collapse). NPC-carried groups are hidden by default — enable them in **⚙ Settings**.
   Each group is **clickable like an item**: a group page lists what it can spawn,

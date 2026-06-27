@@ -76,6 +76,7 @@ CDDA only uses fonts referenced by `config/fonts.json`, even if the file sits in
 - **🅰 Edit / Apply**: write the font and size into the game config
 
 **🅰 Edit / Apply** flow:
+0. (with Pillow installed) a **preview** of the selected font is shown — Latin/Korean/Kanji sample.
 1. Choose where to apply it — Main (game text) / Menus (GUI) / Map / Overmap.
 2. (optional) Enter a **font size** — Width (FONT_WIDTH) / Height (FONT_HEIGHT) / Size (FONT_SIZE).
 3. On apply:
@@ -117,7 +118,7 @@ When a new stable major is released, just add one line for its tag to `GAMES[...
 ## Build your own .exe
 
 ```
-pip install pyinstaller ttkbootstrap
+pip install pyinstaller ttkbootstrap pillow
 pyinstaller --onefile --noconsole --name CDDA-Manager --collect-all ttkbootstrap cdda_installer.pyw
 ```
 The output is `dist/CDDA-Manager.exe`.

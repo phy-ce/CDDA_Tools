@@ -38,6 +38,13 @@ except Exception:
     _TB_WINDOW = None
     UI_THEME = None
 
+# 폰트 미리보기용 (있으면 사용, 없으면 미리보기만 생략)
+try:
+    from PIL import Image, ImageDraw, ImageFont, ImageTk
+    _HAS_PIL = True
+except Exception:
+    _HAS_PIL = False
+
 # 사용자가 고를 수 있는 테마 (ttkbootstrap 있을 때만 표시). (테마이름, i18n키)
 THEME_CHOICES = [("cosmo", "theme_light"), ("darkly", "theme_dark"), ("vapor", "theme_purple")]
 # UI 글꼴 (작아 보인다는 피드백 → 기본보다 크게)
@@ -57,6 +64,26 @@ def is_dark_theme():
 def muted_fg():
     """부제목용 '연한' 글자색 — 다크 테마에선 밝은 회색이라야 보인다."""
     return "#adb5bd" if is_dark_theme() else "#6c757d"
+
+
+FONT_PREVIEW_SAMPLE = "AaBbCc 0123  안녕하세요 한글  漢字"
+
+
+def render_font_preview(font_path, size=22):
+    """폰트 파일을 직접 렌더해 미리보기 이미지를 만든다(Pillow 필요). 실패 시 None."""
+    if not _HAS_PIL:
+        return None
+    try:
+        font = ImageFont.truetype(font_path, size)
+    except Exception:
+        return None
+    fill = (230, 230, 230, 255) if is_dark_theme() else (33, 37, 41, 255)
+    probe = ImageDraw.Draw(Image.new("RGBA", (8, 8)))
+    bbox = probe.textbbox((0, 0), FONT_PREVIEW_SAMPLE, font=font)
+    w, h = bbox[2] - bbox[0] + 8, bbox[3] - bbox[1] + 8
+    img = Image.new("RGBA", (max(w, 60), max(h, 30)), (0, 0, 0, 0))  # 배경 투명
+    ImageDraw.Draw(img).text((4 - bbox[0], 4 - bbox[1]), FONT_PREVIEW_SAMPLE, font=font, fill=fill)
+    return ImageTk.PhotoImage(img)
 
 USER_AGENT = "CDDA-Installer/4.0 (+https://github.com/CleverRaven/Cataclysm-DDA)"
 GITHUB_API = "https://api.github.com/repos"
@@ -240,6 +267,7 @@ STRINGS = {
         "sysfont_prompt": "Windows에 설치된 폰트를 골라 추가합니다. (검색·복수 선택 가능)",
         "sysfont_none": "설치된 폰트를 찾지 못했습니다.",
         "sysfont_add": "추가",
+        "font_preview_na": "(미리보기는 Pillow 설치 시 표시됩니다: pip install pillow)",
         "font_apply_prompt": "'{name}' 을(를) 어느 글꼴 영역에 적용할까요?",
         "font_cat_typeface": "기본 (게임 텍스트)",
         "font_cat_gui": "메뉴 (GUI)",
@@ -405,6 +433,7 @@ STRINGS = {
         "sysfont_prompt": "Pick fonts installed on Windows to add. (search, multi-select)",
         "sysfont_none": "No installed fonts found.",
         "sysfont_add": "Add",
+        "font_preview_na": "(preview shown when Pillow is installed: pip install pillow)",
         "font_apply_prompt": "Where should '{name}' be applied?",
         "font_cat_typeface": "Main (game text)",
         "font_cat_gui": "Menus (GUI)",
@@ -1708,7 +1737,7 @@ class ResourceTab:
         it = self._selected()
         if not it:
             messagebox.showinfo(t("need_select_title"), t("mod_remove_select"), parent=self.win); return
-        res = self._ask_font_apply(it["name"])
+        res = self._ask_font_apply(it["name"], it["path"])
         if res is None:
             return  # 취소
         cats, sizes = res
@@ -1728,7 +1757,7 @@ class ResourceTab:
         messagebox.showinfo(t("done_title"),
                             t("applied_summary", detail="\n".join(detail)), parent=self.win)
 
-    def _ask_font_apply(self, font_name):
+    def _ask_font_apply(self, font_name, font_path=None):
         """글꼴 영역 + 크기 입력 대화창. (cats, sizes) 또는 None(취소).
         cats: 적용할 typeface 카테고리 리스트. sizes: {옵션키: 값} (변경분만)."""
         opts = load_options(self.version)  # None 이면 options.json 없음(크기 비활성)
@@ -1739,6 +1768,15 @@ class ResourceTab:
         dlg.resizable(False, False)
         ttk.Label(dlg, text=t("font_apply_prompt", name=font_name),
                   padding=(12, 10)).pack(anchor="w")
+
+        # 선택한 폰트 미리보기
+        preview = render_font_preview(font_path) if font_path else None
+        if preview is not None:
+            pv = ttk.Label(dlg, image=preview)
+            pv.image = preview  # GC 방지 참조 유지
+            pv.pack(padx=12, pady=(0, 6), anchor="w")
+        elif not _HAS_PIL:
+            ttk.Label(dlg, text=t("font_preview_na"), foreground=muted_fg()).pack(padx=12, anchor="w")
 
         body = ttk.Frame(dlg, padding=(14, 0))
         body.pack(fill="x")

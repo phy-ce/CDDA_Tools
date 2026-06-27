@@ -22,7 +22,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install deps
-        run: pip install pyinstaller ttkbootstrap
+        run: pip install pyinstaller ttkbootstrap pillow
 
       - name: Build exe
         working-directory: CDDA_Installer

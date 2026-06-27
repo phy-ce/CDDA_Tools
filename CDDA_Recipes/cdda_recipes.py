@@ -1430,8 +1430,17 @@ def _otree_node(idx, group, ctx, depth, seen, budget):
     alts = len(entries) - 1
     badge = ""
     if alts > 0:
-        others = ", ".join(idx.name(e[0]) for e in entries if e is not primary)
-        badge = ' <span class="alt" title="%s">+%d</span>' % (h(others), alts)
+        def alt_label(e):
+            nm = idx.name(e[0])
+            if len(e) > 2 and e[2] == "LIST":
+                return nm
+            return "%s ×%s" % (nm, e[1] if len(e) > 1 else 1)
+        others = ", ".join(alt_label(e) for e in entries if e is not primary)
+        altdata = [{"label": alt_label(e),
+                    "url": "" if (len(e) > 2 and e[2] == "LIST") else item_url(e[0], ctx)}
+                   for e in entries if e is not primary]
+        badge = (' <span class="alt" title="%s" data-alts="%s">+%d</span>'
+                 % (h(others), h(json.dumps(altdata, ensure_ascii=False)), alts))
     box = '<div class="node">%s%s%s</div>' % (label, qty, badge)
     kids = ""
     if follow and depth > 0 and budget[0] > 0:
@@ -1631,7 +1640,15 @@ ul.otree .node { display: inline-block; border: 1px solid var(--border);
         background: var(--panel2); border-radius: 8px; padding: 5px 10px; white-space: nowrap; }
 ul.otree .node.root { border-color: var(--link); font-weight: 600; }
 ul.otree .node .alt { font-size: 11px; color: var(--muted); background: var(--hover);
-        border-radius: 4px; padding: 0 4px; margin-left: 2px; cursor: help; }
+        border-radius: 4px; padding: 0 4px; margin-left: 2px; cursor: pointer; }
+ul.otree .node .alt:hover { color: var(--link); }
+#altpop { position: absolute; z-index: 50; background: var(--panel);
+        border: 1px solid var(--border2); border-radius: 8px; padding: 4px;
+        box-shadow: 0 8px 28px rgba(0,0,0,.22); max-width: 300px; }
+#altpop a, #altpop span { display: block; padding: 5px 10px; border-radius: 6px;
+        text-decoration: none; font-size: 13px; }
+#altpop a { color: var(--link); } #altpop a:hover { background: var(--hover); }
+#altpop span { color: var(--muted); }
 /* category grid + listing table + settings */
 .catgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
         gap: 10px; margin-top: 14px; }

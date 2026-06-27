@@ -80,6 +80,7 @@ UI_STRINGS = {
         "very_common": "Very common — found in most buildings. Top spots:",
         "abilities": "What you can do", "actions": "Use / actions",
         "techniques": "Melee techniques", "flags": "Flags",
+        "expected_yield": "Expected yield ({n})", "avg_label": "avg",
     },
     "ko": {
         "brand": "CDDA 레시피", "search_ph": "아이템 이름 검색…", "mods": "모드",
@@ -121,6 +122,7 @@ UI_STRINGS = {
         "very_common": "매우 흔함 — 대부분의 건물에 있음. 확률 높은 곳:",
         "abilities": "할 수 있는 것", "actions": "사용 동작",
         "techniques": "근접 기술", "flags": "특성(플래그)",
+        "expected_yield": "예상 산출 ({n})", "avg_label": "평균",
     },
     "ja": {
         "brand": "CDDAレシピ", "search_ph": "アイテム名で検索…", "mods": "MOD",
@@ -162,6 +164,7 @@ UI_STRINGS = {
         "very_common": "とても一般的 — ほとんどの建物にあり。確率の高い場所:",
         "abilities": "できること", "actions": "使用・動作",
         "techniques": "近接技", "flags": "フラグ",
+        "expected_yield": "期待産出 ({n})", "avg_label": "平均",
     },
 }
 
@@ -1030,6 +1033,88 @@ def entries_html(idx, ctx, raw, subtype, depth=0):
     return "".join(rows)
 
 
+# ---------------------------------------------------------------------------
+# Loot probability engine.  Each item carries (prob, expected):
+#   prob     = probability of getting >= 1   (a "chance"; capped at 1.0)
+#   expected = expected count (the average; uncapped, so a >100% chance reads as
+#              "more than one expected", not "more than certain")
+# Derived from CDDA's own item_group rules (collection = independent rolls,
+# distribution = weighted pick-one).
+# ---------------------------------------------------------------------------
+def _avg_count(c):
+    if isinstance(c, list) and len(c) == 2:
+        try:
+            return (float(c[0]) + float(c[1])) / 2.0
+        except (TypeError, ValueError):
+            return 1.0
+    if isinstance(c, (int, float)):
+        return float(c)
+    return 1.0
+
+
+def _chance_ic(chance):
+    p = chance / 100.0
+    return (min(1.0, p), p)
+
+
+def _or_ic(a, b):       # two independent rolls (collection)
+    return (1.0 - (1.0 - a[0]) * (1.0 - b[0]), a[1] + b[1])
+
+
+def _add_ic(a, b):      # mutually exclusive options (distribution)
+    return (min(1.0, a[0] + b[0]), a[1] + b[1])
+
+
+def _entry_loot(idx, e, parent_st, seen, depth):
+    cnt = _avg_count(e.get("count"))
+    if e["kind"] == "item":
+        base = _chance_ic(e["prob"]) if parent_st == "collection" else (1.0, 1.0)
+        return {e["id"]: (base[0], base[1] * cnt)}
+    if e["kind"] == "group":
+        gid = e["id"]
+        if gid in seen:
+            return {}
+        d = idx.group_def.get(gid)
+        if not d:
+            return {}
+        sub = group_loot(idx, d, seen | {gid}, depth + 1)
+    else:                                   # inline distribution/collection
+        st2, raw2 = e["inline"]
+        sub = group_loot(idx, {"subtype": st2, "entries": raw2}, seen, depth + 1)
+    if parent_st == "collection":           # the sub-group fires with prob%
+        m = e["prob"] / 100.0
+        sub = {k: (min(1.0, p * m), ex * m) for k, (p, ex) in sub.items()}
+    return sub
+
+
+def group_loot(idx, g, seen=None, depth=0):
+    """Flatten an item_group to {item_id: (prob, expected)} over its whole tree."""
+    seen = set() if seen is None else seen
+    if depth > 12:
+        return {}
+    st, raw = _subtype_and_raw(g)
+    entries = _norm_entries(raw, st)
+    loot = {}
+    if st == "distribution":
+        total = sum(max(0, e["prob"]) for e in entries) or 1
+        for e in entries:
+            t = max(0, e["prob"]) / total
+            for iid, ic in _entry_loot(idx, e, st, seen, depth).items():
+                sc = (min(1.0, ic[0] * t), ic[1] * t)
+                loot[iid] = sc if iid not in loot else _add_ic(loot[iid], sc)
+    else:                                   # collection
+        for e in entries:
+            for iid, ic in _entry_loot(idx, e, st, seen, depth).items():
+                loot[iid] = ic if iid not in loot else _or_ic(loot[iid], ic)
+    return loot
+
+
+def avg_html(expected):
+    if expected >= 9.95:
+        return "×%d" % round(expected)
+    return "×%.1f" % expected
+
+
 def group_html(idx, group, ctx, depth=0):
     alts = []
     for entry in group:
@@ -1618,8 +1703,25 @@ def render_group(ctx, gid):
         rows = entries_html(idx, ctx, raw, st)
         if rows:
             n = len(_norm_entries(raw, st))
-            parts.append('<div class="section">%s</div><ul class="problist">%s</ul>'
+            parts.append('<details class="treebox"><summary class="section">%s</summary>'
+                         '<ul class="problist">%s</ul></details>'
                          % (h(T(ctx, "g_contents", n=n)), rows))
+        # flattened: what you actually get, per final item (chance + avg count)
+        loot = group_loot(idx, g)
+        if loot:
+            top = sorted(loot.items(), key=lambda kv: (-kv[1][1], -kv[1][0]))
+            lis = []
+            for iid, (p, ex) in top[:60]:
+                avg = ("%.2f" % ex) if ex < 10 else str(round(ex))
+                lis.append('<li><span class="prob">%s</span><div class="ent">%s'
+                           ' <span class="locq">%s %s</span></div></li>'
+                           % (pct_html(p), a_item(idx, iid, ctx),
+                              h(T(ctx, "avg_label")), h(avg)))
+            extra = ("" if len(loot) <= 60 else
+                     '<div class="chips"><span class="chip loc">+%d</span></div>'
+                     % (len(loot) - 60))
+            parts.append('<div class="section">%s</div><ul class="problist">%s</ul>%s'
+                         % (h(T(ctx, "expected_yield", n=len(loot))), "".join(lis), extra))
     else:
         # fallback: older set-based view (no raw def captured)
         items = sorted(idx.group_items.get(gid, ()), key=lambda x: idx.name(x).lower())

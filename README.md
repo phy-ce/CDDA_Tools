@@ -1,13 +1,12 @@
 # CDDA_Tools
 
-Cataclysm: Dark Days Ahead / Bright Nights 용 유틸리티 모음.
-A collection of utilities for Cataclysm: Dark Days Ahead / Bright Nights.
+A collection of utilities for Cataclysm: Dark Days Ahead (CDDA) and
+Cataclysm: Bright Nights (CDBN).
 
-## 도구 / Tools
+## Tools
 
-| 도구 / Tool | 설명 / Description |
-|-------------|-------------------|
-| [**CDDA_Installer**](CDDA_Installer/README.md) | 버전 설치·실행·모드 관리 GUI (Windows). Install/launch/mod-manage GUI for CDDA & CDBN. |
+| Tool | Description |
+|------|-------------|
+| [**CDDA_Installer**](CDDA_Installer/README.md) | Windows GUI to install, launch, and mod-manage CDDA & CDBN versions ([한국어](CDDA_Installer/README.md) / [English](CDDA_Installer/README.en.md)) |
 
-각 도구의 사용법은 해당 폴더의 README를 참고하세요.
 See each tool's own README for usage details.

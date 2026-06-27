@@ -44,7 +44,8 @@ Installing extracts to `base-folder/<version-tag>/`. Already-installed versions 
 ## Content Management (mods / soundpacks / tilesets / fonts)
 
 In the Library tab, select a version and press **🧩 Content** to open a window with 4 tabs.
-Each tab shows **only items added with this tool** (the game's bundled content is excluded).
+**Both bundled and added** items are shown (marked in the "Type" column); **bundled items are
+protected from deletion** and only items added with this tool can be removed.
 
 | Resource | Install location | Identified by |
 |---|---|---|
@@ -58,8 +59,13 @@ Each tab shows **only items added with this tool** (the game's bundled content i
 - **🗑 Remove** / **Open folder**
 
 When adding, the tool finds folders containing the identifier file (`modinfo.json`/`soundpack.txt`/`tileset.txt`),
-or font files for the Fonts tab, copies them to the target folder, and leaves a `.cdda_added` marker to
-distinguish them from bundled content.
+or font files for the Fonts tab, copies them to the target folder, and leaves a `.cdda_added` marker. Only
+marked items count as "Added" and can be deleted; unmarked bundled content is protected.
+
+> **Fonts note**: copying a font into `data/font/` is not enough. The game only uses fonts referenced by
+> `config/fonts.json` (`typeface`/`gui_typeface`/`map_typeface`/`overmap_typeface`), so you must edit that
+> file to actually use an added font (there is no in-game font picker). This is why bundled fonts
+> (Terminus/unifont, etc.) are delete-protected.
 
 > CDDA has no central content repository/API, so a "browse a list and pick" approach isn't possible.
 > Instead you fetch via a GitHub URL or zip/file link (most content lives on GitHub).

@@ -1132,14 +1132,19 @@ class ResourceTab:
         self.rdir = find_resource_dir(self.version, spec)
         self._items = []
 
-        ttk.Label(parent, text=t("res_subtitle"), foreground="#666").pack(anchor="w", pady=(0, 6))
+        ttk.Label(parent, text=t("res_subtitle"), foreground="#666").pack(anchor="w", pady=(0, 2))
+        if spec.get("note_key"):
+            ttk.Label(parent, text=t(spec["note_key"]), foreground="#b06000",
+                      wraplength=540, justify="left").pack(anchor="w", pady=(0, 4))
 
-        cols = ("name", "folder")
+        cols = ("name", "source", "folder")
         self.tree = ttk.Treeview(parent, columns=cols, show="headings", height=10)
         self.tree.heading("name", text=t("mod_col_name"))
+        self.tree.heading("source", text=t("col_source"))
         self.tree.heading("folder", text=t("mod_col_folder"))
-        self.tree.column("name", width=300)
-        self.tree.column("folder", width=200)
+        self.tree.column("name", width=260)
+        self.tree.column("source", width=70, anchor="center")
+        self.tree.column("folder", width=180)
         self.tree.pack(fill="both", expand=True, pady=4)
 
         self.status = ttk.Label(parent, text="", foreground="#666")
@@ -1173,7 +1178,8 @@ class ResourceTab:
         self.rdir = find_resource_dir(self.version, self.spec) or self.rdir
         self._items = scan_resources(self.rdir, self.spec)
         for it in self._items:
-            self.tree.insert("", "end", values=(it["name"], it["folder"]))
+            src = t("src_bundled") if it.get("bundled") else t("src_added")
+            self.tree.insert("", "end", values=(it["name"], src, it["folder"]))
         if self.rdir:
             self.status.config(text=t("res_count", n=len(self._items), dir=self.rdir), foreground="#666")
         else:
@@ -1309,6 +1315,8 @@ class ResourceTab:
         it = self._selected()
         if not it:
             messagebox.showinfo(t("need_select_title"), t("mod_remove_select"), parent=self.win); return
+        if it.get("bundled"):  # 게임 기본 제공 항목은 보호 (지우면 게임이 깨질 수 있음)
+            messagebox.showinfo(t("cant_remove_title"), t("cant_remove_bundled"), parent=self.win); return
         if not messagebox.askyesno(t("mod_remove_title"),
                                    t("mod_remove_msg", name=it["name"], path=it["path"]), parent=self.win):
             return

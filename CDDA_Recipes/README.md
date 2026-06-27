@@ -39,8 +39,9 @@ cd CDDA_Recipes
 pyinstaller --onefile --console --name CDDA-Recipes cdda_recipes.py
 ```
 
-The result is `CDDA_Recipes/dist/CDDA-Recipes.exe`. Pushing a `recipes-v*` tag also
-builds it via GitHub Actions and attaches it to that Release.
+The result is `CDDA_Recipes/dist/CDDA-Recipes.exe`. Pushing a `v*` tag also builds it
+via GitHub Actions (`.github/workflows/build.yml`) — alongside `CDDA-Manager.exe` —
+and attaches both to that same Release.
 
 **To stop it**, close the console window (the one `run.bat` / `python` opened) or
 press **Ctrl+C** in it.

@@ -123,7 +123,7 @@ pyinstaller --onefile --noconsole --name CDDA-Manager --collect-all ttkbootstrap
 ```
 The output is `dist/CDDA-Manager.exe`.
 Pushing a `v*` tag triggers GitHub Actions (`.github/workflows/build.yml`) to automatically
-build the exe and attach it to that Release.
+build both `CDDA-Manager.exe` and `CDDA-Recipes.exe` and attach them to that same Release.
 
 > `--onefile` exe builds can occasionally trigger antivirus false positives (a known PyInstaller trait).
 

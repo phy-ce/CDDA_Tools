@@ -122,7 +122,7 @@ pyinstaller --onefile --noconsole --name CDDA-Manager --collect-all ttkbootstrap
 ```
 결과물은 `dist/CDDA-Manager.exe`. (`--collect-all ttkbootstrap` 으로 테마 리소스 포함)
 `v*` 태그를 푸시하면 GitHub Actions(`.github/workflows/build.yml`)가 자동으로
-exe를 빌드해 해당 Release에 첨부한다.
+`CDDA-Manager.exe` 와 `CDDA-Recipes.exe` 두 exe를 빌드해 같은 Release에 함께 첨부한다.
 
 > `--onefile` exe는 백신이 가끔 오탐(false positive)할 수 있다 (PyInstaller 특성).
 

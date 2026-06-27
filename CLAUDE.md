@@ -32,19 +32,12 @@ documentation — **not** on assumptions or memory.
 When unsure how a CDDA feature works, read the relevant file under `doc/` first,
 then confirm against `data/`, before writing code.
 
-## Licensing: this project is MIT — reimplement, never copy
+## Third-party references
 
-This repo is MIT-licensed. Other Cataclysm tools you may reference (for example the
-`cdda-guide` / `cbn-guide` data browsers) are often **GPL**. Do **not** copy or
-adapt their source — that would force the project to GPL.
-
-- Treat any external project only as a reference for **the algorithm, formula, or
-  data format** (facts/methods, which are not copyrightable). Always reimplement
-  from scratch in our own code, idiomatic to this repo.
-- Prefer to derive behavior from CDDA's own `doc/` and `data/` (the source of
-  truth above), using other tools only to cross-check the math.
-- This is the default working method; **do not call it out in commit messages or
-  code comments** — just write original code.
+This repo is MIT; some other Cataclysm tools (e.g. the `cdda-guide` / `cbn-guide`
+browsers) are GPL. Use them only to understand an algorithm or data format and
+write our own implementation, grounded in CDDA's `doc/` and `data/`. No need to
+note this in commits or comments — just keep the code original.
 
 ## Format references already relied on
 

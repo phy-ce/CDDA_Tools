@@ -32,7 +32,7 @@ from tkinter import filedialog, messagebox, simpledialog
 try:
     import ttkbootstrap as ttk
     _TB_WINDOW = ttk.Window
-    UI_THEME = "cosmo"   # 과하지 않은 밝은 플랫 테마
+    UI_THEME = "darkly"   # 기본 다크
 except Exception:
     from tkinter import ttk
     _TB_WINDOW = None
@@ -40,6 +40,23 @@ except Exception:
 
 # 사용자가 고를 수 있는 테마 (ttkbootstrap 있을 때만 표시). (테마이름, i18n키)
 THEME_CHOICES = [("cosmo", "theme_light"), ("darkly", "theme_dark"), ("vapor", "theme_purple")]
+# UI 글꼴 (작아 보인다는 피드백 → 기본보다 크게)
+UI_FONT_FAMILY = "Segoe UI"
+UI_FONT_SIZE = 11
+
+
+def is_dark_theme():
+    if _TB_WINDOW is None:
+        return False
+    try:
+        return ttk.Style().theme.type == "dark"
+    except Exception:
+        return False
+
+
+def muted_fg():
+    """부제목용 '연한' 글자색 — 다크 테마에선 밝은 회색이라야 보인다."""
+    return "#adb5bd" if is_dark_theme() else "#6c757d"
 
 USER_AGENT = "CDDA-Installer/4.0 (+https://github.com/CleverRaven/Cataclysm-DDA)"
 GITHUB_API = "https://api.github.com/repos"
@@ -904,10 +921,23 @@ class App:
         root.geometry("680x640")
         root.minsize(620, 580)
 
+        # 기본 UI 글꼴을 키운다 (작아 보인다는 피드백)
+        self._muted_labels = []
+        try:
+            import tkinter.font as tkfont
+            for _fn in ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont"):
+                try:
+                    tkfont.nametofont(_fn).configure(family=UI_FONT_FAMILY, size=UI_FONT_SIZE)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         # 큰 세그먼트 버튼(탭) 스타일 — 텍스트를 가운데 정렬하고 크게
         style = ttk.Style()
-        style.configure("Big.Toolbutton", font=("Segoe UI", 14, "bold"),
+        style.configure("Big.Toolbutton", font=("Segoe UI", 15, "bold"),
                         padding=[10, 16], anchor="center", justify="center")
+        style.configure("Treeview", rowheight=int(UI_FONT_SIZE * 2.2))  # 글꼴 키운 만큼 행 높이도
 
         top = ttk.Frame(root)
         top.pack(fill="x", padx=10, pady=(8, 0))
@@ -970,6 +1000,13 @@ class App:
         self._i18n_text.append((widget, key))
         return widget
 
+    def _subtitle(self, parent, key):
+        """테마에 맞는 연한 색의 부제목 라벨 (다크에서도 잘 보이게)."""
+        lbl = ttk.Label(parent, text=t(key), foreground=muted_fg())
+        self.reg(lbl, key)
+        self._muted_labels.append(lbl)
+        return lbl
+
     # ---- 테마 ----
     def _theme_fg(self):
         """현재 테마의 기본 글자색 (다크 테마에서 #333 이 안 보이는 문제 방지)."""
@@ -995,6 +1032,11 @@ class App:
             self.status.config(foreground=self.fg)
         except Exception:
             pass
+        for lbl in self._muted_labels:  # 부제목 색도 테마에 맞게
+            try:
+                lbl.config(foreground=muted_fg())
+            except Exception:
+                pass
 
     def apply_language(self):
         set_lang(self.lang.get())
@@ -1019,8 +1061,7 @@ class App:
         f = self.tab_install
         self.title_lbl = ttk.Label(f, text=self._game()["name"], font=("Segoe UI", 15, "bold"))
         self.title_lbl.pack(anchor="w")
-        self.reg(ttk.Label(f, text=t("install_subtitle"), foreground="#666"),
-                 "install_subtitle").pack(anchor="w", pady=(0, 8))
+        self._subtitle(f, "install_subtitle").pack(anchor="w", pady=(0, 8))
 
         gf = self.reg(ttk.Labelframe(f, text=t("sec_game"), padding=8), "sec_game")
         gf.pack(fill="x", pady=3)
@@ -1244,8 +1285,7 @@ class App:
         f = self.tab_run
         self.run_title_lbl = ttk.Label(f, text=t("installed_title_plain"), font=("Segoe UI", 15, "bold"))
         self.run_title_lbl.pack(anchor="w")
-        self.reg(ttk.Label(f, text=t("run_subtitle"), foreground="#666"),
-                 "run_subtitle").pack(anchor="w", pady=(0, 8))
+        self._subtitle(f, "run_subtitle").pack(anchor="w", pady=(0, 8))
 
         cols = ("game", "name", "channel", "date")
         self.tree = ttk.Treeview(f, columns=cols, show="headings", height=12)
@@ -1264,7 +1304,8 @@ class App:
         self.tree.pack(fill="both", expand=True, pady=4)
         self.tree.bind("<Double-1>", lambda e: self.run_selected())
 
-        self.run_status = ttk.Label(f, text="", foreground="#666")
+        self.run_status = ttk.Label(f, text="", foreground=muted_fg())
+        self._muted_labels.append(self.run_status)
         self.run_status.pack(anchor="w", pady=(2, 6))
 
         btns = ttk.Frame(f)
@@ -1388,7 +1429,7 @@ class ResourceTab:
         self.rdir = find_resource_dir(self.version, spec)
         self._items = []
 
-        ttk.Label(parent, text=t("res_subtitle"), foreground="#666").pack(anchor="w", pady=(0, 2))
+        ttk.Label(parent, text=t("res_subtitle"), foreground=muted_fg()).pack(anchor="w", pady=(0, 2))
         if spec.get("note_key"):
             ttk.Label(parent, text=t(spec["note_key"]), foreground="#b06000",
                       wraplength=540, justify="left").pack(anchor="w", pady=(0, 4))
@@ -1403,7 +1444,7 @@ class ResourceTab:
         self.tree.column("folder", width=180)
         self.tree.pack(fill="both", expand=True, pady=4)
 
-        self.status = ttk.Label(parent, text="", foreground="#666")
+        self.status = ttk.Label(parent, text="", foreground=muted_fg())
         self.status.pack(anchor="w", pady=(2, 6))
 
         btns = ttk.Frame(parent)
@@ -1441,7 +1482,7 @@ class ResourceTab:
             src = t("src_bundled") if it.get("bundled") else t("src_added")
             self.tree.insert("", "end", values=(it["name"], src, it["folder"]))
         if self.rdir:
-            self.status.config(text=t("res_count", n=len(self._items), dir=self.rdir), foreground="#666")
+            self.status.config(text=t("res_count", n=len(self._items), dir=self.rdir), foreground=muted_fg())
         else:
             self.status.config(text=t("res_no_dir"), foreground="red")
 

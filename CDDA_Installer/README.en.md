@@ -25,7 +25,7 @@ or: `python cdda_installer.pyw`
 
 > The modern theme comes from the optional dependency **ttkbootstrap** (`pip install ttkbootstrap`).
 > Without it the app falls back to standard tkinter, so it runs either way. The exe bundles it.
-> A toggle at the top-right switches **Light / Dark / Purple** themes live (when ttkbootstrap is present).
+> A toggle at the top-right switches **Light / Dark / Purple** themes live (default: Dark, when ttkbootstrap is present).
 
 ## Layout (2 tabs)
 

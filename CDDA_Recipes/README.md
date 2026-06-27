@@ -23,13 +23,24 @@ match your **exact version and mods** — no network, no API key, no out-of-date
 
 ## Run
 
-Requires Python 3.8+ (no third-party packages).
-
-- **Easiest:** double-click **`run.bat`**.
-- Or from a terminal: `python cdda_recipes.py`
+- **No Python needed:** grab **`CDDA-Recipes.exe`** from the
+  [Releases](../../../releases) page and double-click it.
+- **With Python** (3.8+, standard library only): double-click **`run.bat`**, or run
+  `python cdda_recipes.py` from a terminal.
 
 It indexes the game data, then opens `http://127.0.0.1:<port>/` in your default
 browser.
+
+### Build the exe yourself
+
+```
+pip install pyinstaller
+cd CDDA_Recipes
+pyinstaller --onefile --console --name CDDA-Recipes cdda_recipes.py
+```
+
+The result is `CDDA_Recipes/dist/CDDA-Recipes.exe`. Pushing a `recipes-v*` tag also
+builds it via GitHub Actions and attaches it to that Release.
 
 **To stop it**, close the console window (the one `run.bat` / `python` opened) or
 press **Ctrl+C** in it.

@@ -1,0 +1,21 @@
+# PyInstaller 빌드 결과물 (Releases에 첨부, repo에는 커밋하지 않음)
+build/
+dist/
+*.spec
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# OS / 에디터
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# 도구 설정 (로컬 전용)
+.claude/

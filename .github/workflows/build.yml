@@ -1,0 +1,33 @@
+name: build-exe
+
+# v* 태그를 푸시하면 (예: git tag v1.0 && git push --tags) 자동으로
+# Windows exe 를 빌드해 같은 태그의 GitHub Release 에 첨부한다.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:   # 깃허브 웹에서 수동 실행도 가능
+
+permissions:
+  contents: write       # Release 생성/자산 업로드에 필요
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build exe
+        run: pyinstaller --onefile --noconsole --name CDDA-Manager cdda_installer.pyw
+
+      - name: Attach exe to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/CDDA-Manager.exe

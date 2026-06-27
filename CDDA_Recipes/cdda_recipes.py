@@ -81,6 +81,9 @@ UI_STRINGS = {
         "abilities": "What you can do", "actions": "Use / actions",
         "techniques": "Melee techniques", "flags": "Flags",
         "expected_yield": "Expected yield ({n})", "avg_label": "avg",
+        "obtain": "Obtaining", "disassemble_from": "Disassemble from ({n})",
+        "loot_at": "Found as loot ({n})",
+        "flag_single": "Flag", "items_with_flag": "Items with this flag ({n})",
     },
     "ko": {
         "brand": "CDDA 레시피", "search_ph": "아이템 이름 검색…", "mods": "모드",
@@ -123,6 +126,9 @@ UI_STRINGS = {
         "abilities": "할 수 있는 것", "actions": "사용 동작",
         "techniques": "근접 기술", "flags": "특성(플래그)",
         "expected_yield": "예상 산출 ({n})", "avg_label": "평균",
+        "obtain": "입수", "disassemble_from": "분해로 얻기 ({n})",
+        "loot_at": "전리품 ({n})",
+        "flag_single": "특성(플래그)", "items_with_flag": "이 특성을 가진 아이템 ({n})",
     },
     "ja": {
         "brand": "CDDAレシピ", "search_ph": "アイテム名で検索…", "mods": "MOD",
@@ -165,6 +171,9 @@ UI_STRINGS = {
         "abilities": "できること", "actions": "使用・動作",
         "techniques": "近接技", "flags": "フラグ",
         "expected_yield": "期待産出 ({n})", "avg_label": "平均",
+        "obtain": "入手", "disassemble_from": "分解で入手 ({n})",
+        "loot_at": "戦利品 ({n})",
+        "flag_single": "フラグ", "items_with_flag": "このフラグを持つアイテム ({n})",
     },
 }
 
@@ -414,7 +423,10 @@ class DataIndex:
         self.by_result = {}
         self.used_in = {}
         self.uncrafts = {}       # item id -> [uncraft entry, ...]
+        self.uncraft_from = {}   # yielded item id -> set(source item id) to disassemble
         self.book_recipes = {}   # book id -> [(recipe result, level), ...]
+        self._loot_cache = {}    # group id -> flattened {item: (prob, expected)}
+        self._flag_items = None  # flag -> set(item id), built lazily
         self.flag_info = {}      # flag id -> info text (json_flag)
         self.action_names = {}   # item_action id -> readable name
         self.item_ids = []       # ids whose type is a real item (for search)
@@ -495,6 +507,14 @@ class DataIndex:
             self.by_cat.setdefault(cat, []).append(res)
         self.item_ids = [eid for eid, e in self.by_id.items()
                          if isinstance(e, dict) and e.get("type") in ITEM_TYPES]
+        for src, entries in self.uncrafts.items():       # reverse: yield -> source
+            for un in entries:
+                for group in (un.get("components") or []):
+                    if not isinstance(group, list):
+                        continue
+                    for e in group:
+                        if isinstance(e, list) and e and isinstance(e[0], str):
+                            self.uncraft_from.setdefault(e[0], set()).add(src)
         self._index_groups()
 
     def _index_book_learn(self, recipe, res):
@@ -666,6 +686,56 @@ class DataIndex:
         if not SETTINGS.get("npc_loot"):
             groups = [g for g in groups if not g.startswith("NC_")]
         return sorted(groups, key=str.lower)
+
+    def groups_with_item(self, iid):
+        """Every group that can yield the item, directly or through any depth of
+        nesting (the transitive set of ancestors)."""
+        seen = set(self.item_groups_of.get(iid, ()))
+        frontier = set(seen)
+        while frontier:
+            nxt = set()
+            for g in frontier:
+                nxt |= self.group_parents.get(g, set())
+            nxt -= seen
+            seen |= nxt
+            frontier = nxt
+        return seen
+
+    def loot_of(self, gid):
+        """Flattened {item: (prob, expected)} for a named group, memoized."""
+        lc = self._loot_cache.get(gid)
+        if lc is None:
+            d = self.group_def.get(gid)
+            lc = group_loot(self, d) if d else {}
+            self._loot_cache[gid] = lc
+        return lc
+
+    def item_loot_locations(self, iid):
+        """place label -> (prob, expected) of finding the item there, combining
+        the item's chance inside each placed group with that group's placement."""
+        agg = {}
+        for g in self.groups_with_item(iid):
+            places = self.group_places.get(g)
+            if not places:
+                continue
+            item_ic = self.loot_of(g).get(iid)
+            if not item_ic:
+                continue
+            for loc, pl in places.items():
+                label = self.loc_name(loc) or _loc_base(loc)
+                combo = (pl[0] * item_ic[0], pl[1] * item_ic[1])
+                cur = agg.get(label)
+                if cur is None or combo[0] > cur[0]:   # max across variants
+                    agg[label] = combo
+        return agg
+
+    def item_drop_monsters(self, iid):
+        """Monsters that can drop the item via a death-drop group."""
+        mons = set()
+        for g in self.groups_with_item(iid):
+            if g in self.group_dropped_by and iid in self.loot_of(g):
+                mons |= self.group_dropped_by[g]
+        return mons
 
     def loc_name(self, loc):
         """Readable, localized place name for an om_terrain/city_building id, or
@@ -927,6 +997,33 @@ def group_url(gid, ctx):
 
 def a_group(gid, ctx):
     return '<a class="chip" href="%s">%s</a>' % (group_url(gid, ctx), h(gid.replace("_", " ")))
+
+
+def flag_url(flag, ctx):
+    p = {"flag": flag, "ver": ctx["ver"], "lang": ctx["lang"]}
+    if ctx["mods"]:
+        p["mods"] = 1
+    return "/flag?" + urlencode(p)
+
+
+def _more_chips(chips, cap=24):
+    """A chips row; anything past `cap` is hidden behind a click-to-expand +N."""
+    if len(chips) <= cap:
+        return '<div class="chips">%s</div>' % "".join(chips)
+    return ('<div class="chips">%s</div>'
+            '<details class="morechips"><summary class="chip loc">+%d</summary>'
+            '<div class="chips">%s</div></details>'
+            % ("".join(chips[:cap]), len(chips) - cap, "".join(chips[cap:])))
+
+
+def _more_list(lis, cap=60):
+    """A problist <ul>; rows past `cap` collapse behind a click-to-expand +N."""
+    if len(lis) <= cap:
+        return '<ul class="problist">%s</ul>' % "".join(lis)
+    return ('<ul class="problist">%s</ul>'
+            '<details class="morechips"><summary class="chip loc">+%d</summary>'
+            '<ul class="problist">%s</ul></details>'
+            % ("".join(lis[:cap]), len(lis) - cap, "".join(lis[cap:])))
 
 
 def _subtype_and_raw(node):
@@ -1442,8 +1539,17 @@ ul.problist.sub { margin: 6px 0 2px; padding-left: 12px; border-left: 2px solid 
 ul.problist.sub li { border-bottom: none; padding: 2px 0; }
 .slot { color: var(--faint); font-size: 12px; font-style: italic; }
 .chip.loc .locq { color: var(--faint); font-size: 11px; margin-left: 4px; }
-.chip.flag { color: var(--muted); cursor: help; font: 12px ui-monospace, Consolas, monospace; }
+.chip.flag { color: var(--link); font: 12px ui-monospace, Consolas, monospace;
+        text-decoration: none; }
 .chip.flag:hover { border-color: var(--link); }
+/* click-to-expand "+N" for capped chip rows / lists */
+details.morechips { margin-top: 6px; }
+details.morechips > summary { display: inline-block; cursor: pointer; list-style: none;
+        color: var(--link); }
+details.morechips > summary::-webkit-details-marker { display: none; }
+details.morechips > summary::marker { content: ""; }
+details.morechips > summary:hover { border-color: var(--link); }
+details.morechips[open] > summary { margin-bottom: 6px; }
 .prob { font: 12px ui-monospace, Consolas, monospace; color: var(--muted);
         min-width: 3.6em; text-align: right; flex: none; padding-top: 1px; }
 /* mechanics doc page */
@@ -1687,16 +1793,46 @@ def render_item(ctx):
             parts.append('<div class="recipe"><div class="rtitle">📖 %s</div>%s</div>'
                          % (h(T(ctx, "book")), box))
 
-    # where it's found (loot/item groups) — clickable, like items; collapse if long
-    locs = idx.found_in(rid)
-    if locs:
-        chips = "".join(a_group(g, ctx) for g in locs)
-        hdr = "%s · %d" % (h(T(ctx, "found")), len(locs))
-        if len(locs) > 30:
-            parts.append('<details class="foundbox"><summary class="section">%s</summary>'
-                         '<div class="chips">%s</div></details>' % (hdr, chips))
-        else:
-            parts.append('<div class="section">%s</div><div class="chips">%s</div>' % (hdr, chips))
+    # how to obtain it: disassembly source, loot locations (chance/avg), monster drops
+    obtain = []
+
+    df = sorted(idx.uncraft_from.get(rid, ()), key=lambda x: idx.name(x).lower())
+    if df:
+        chips = "".join('<a class="chip" href="%s">%s</a>' % (item_url(d, ctx), h(idx.name(d)))
+                        for d in df)
+        obtain.append('<div class="section">%s</div><div class="chips">%s</div>'
+                      % (h(T(ctx, "disassemble_from", n=len(df))), chips))
+
+    iloc = idx.item_loot_locations(rid)
+    if iloc:
+        rows = sorted(iloc.items(), key=lambda kv: -kv[1][0])
+        chips = []
+        for label, (p, ex) in rows:
+            avg = ("%.2f" % ex) if ex < 10 else str(round(ex))
+            chips.append('<span class="chip loc">%s <span class="locq">%s · %s %s</span></span>'
+                         % (h(label), pct_html(p), h(T(ctx, "avg_label")), h(avg)))
+        lead = ('<span class="muted" style="font-size:13px">%s</span> '
+                % h(T(ctx, "very_common")) if len(rows) > 60 else "")
+        obtain.append('<div class="section">%s</div>%s%s'
+                      % (h(T(ctx, "loot_at", n=len(rows))), lead, _more_chips(chips, 24)))
+
+    mons = sorted(idx.item_drop_monsters(rid), key=lambda x: idx.name(x).lower())
+    if mons:
+        chips = "".join('<a class="chip" href="%s">%s</a>' % (item_url(mid, ctx), h(idx.name(mid)))
+                        for mid in mons)
+        obtain.append('<div class="section">%s</div><div class="chips">%s</div>'
+                      % (h(T(ctx, "dropped_by", n=len(mons))), chips))
+
+    glist = idx.found_in(rid)
+    if glist:
+        chips = "".join(a_group(g, ctx) for g in glist)
+        obtain.append('<details class="foundbox"><summary class="section">%s · %d</summary>'
+                      '<div class="chips">%s</div></details>'
+                      % (h(T(ctx, "found")), len(glist), chips))
+
+    if obtain:
+        parts.append('<div class="recipe"><div class="rtitle">📥 %s</div>%s</div>'
+                     % (h(T(ctx, "obtain")), "".join(obtain)))
 
     users = sorted(idx.used_in.get(rid, ()), key=lambda x: idx.name(x).lower())
     if users:
@@ -1739,17 +1875,14 @@ def render_group(ctx, gid):
         if loot:
             top = sorted(loot.items(), key=lambda kv: (-kv[1][1], -kv[1][0]))
             lis = []
-            for iid, (p, ex) in top[:60]:
+            for iid, (p, ex) in top:
                 avg = ("%.2f" % ex) if ex < 10 else str(round(ex))
                 lis.append('<li><span class="prob">%s</span><div class="ent">%s'
                            ' <span class="locq">%s %s</span></div></li>'
                            % (pct_html(p), a_item(idx, iid, ctx),
                               h(T(ctx, "avg_label")), h(avg)))
-            extra = ("" if len(loot) <= 60 else
-                     '<div class="chips"><span class="chip loc">+%d</span></div>'
-                     % (len(loot) - 60))
-            parts.append('<div class="section">%s</div><ul class="problist">%s</ul>%s'
-                         % (h(T(ctx, "expected_yield", n=len(loot))), "".join(lis), extra))
+            parts.append('<div class="section">%s</div>%s'
+                         % (h(T(ctx, "expected_yield", n=len(loot))), _more_list(lis)))
     else:
         # fallback: older set-based view (no raw def captured)
         items = sorted(idx.group_items.get(gid, ()), key=lambda x: idx.name(x).lower())
@@ -1783,16 +1916,12 @@ def render_group(ctx, gid):
                     % (h(name), pct_html(ic[0])))
         # most-likely places first, then alphabetical
         rows = sorted(agg.items(), key=lambda kv: (-kv[1][0], kv[0].lower()))
-        cap = 24
-        shown = rows[:cap]
-        chips = "".join(loc_chip(l, c) for l, c in shown)
-        if len(rows) > cap:
-            chips += '<span class="chip loc">+%d</span>' % (len(rows) - cap)
+        chiplist = [loc_chip(l, c) for l, c in rows]
         # ubiquitous groups (trash, etc.): lead with a plain-language summary
         lead = ('<span class="muted" style="font-size:13px">%s</span> '
                 % h(T(ctx, "very_common")) if len(rows) > 60 else "")
-        parts.append('<div class="section">%s</div>%s<div class="chips">%s</div>'
-                     % (h(T(ctx, "placed_in", n=len(rows))), lead, chips))
+        parts.append('<div class="section">%s</div>%s%s'
+                     % (h(T(ctx, "placed_in", n=len(rows))), lead, _more_chips(chiplist, 24)))
 
     parents = sorted(idx.group_parents.get(gid, ()))
     if parents:

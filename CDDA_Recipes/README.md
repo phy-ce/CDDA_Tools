@@ -55,6 +55,9 @@ press **Ctrl+C** in it.
   ingredient down into its own sub-recipe, so you see the whole chain at a glance.
 - **Found in** — loot/item groups the item spawns in (count shown; long lists
   collapse). NPC-carried groups are hidden by default — enable them in **⚙ Settings**.
+  Each group is **clickable like an item**: a group page lists what it can spawn,
+  the groups it includes, and the groups it's part of — so you can navigate loot
+  groups the same way you navigate items.
 - **⚙ Settings** — a separate page for options (currently: show NPC-inventory sources).
 
 ## How it works

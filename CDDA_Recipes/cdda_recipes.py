@@ -59,6 +59,8 @@ UI_STRINGS = {
         "settings": "Settings", "saved": "Saved.",
         "npc_loot": "Show NPC-inventory sources",
         "npc_loot_help": "Include groups carried by NPCs (NC_*) in 'Found in'. Off by default — they're noisy.",
+        "group": "Loot group", "g_contains": "Can contain ({n})",
+        "g_includes": "Includes groups ({n})", "g_partof": "Part of ({n})",
     },
     "ko": {
         "brand": "CDDA 레시피", "search_ph": "아이템 이름 검색…", "mods": "모드",
@@ -81,6 +83,8 @@ UI_STRINGS = {
         "settings": "설정", "saved": "저장됨.",
         "npc_loot": "NPC 소지 입수원 표시",
         "npc_loot_help": "'입수'에 NPC가 소지한 그룹(NC_*)도 포함. 기본 꺼짐 — 노이즈가 많습니다.",
+        "group": "루트 그룹", "g_contains": "나올 수 있는 아이템 ({n})",
+        "g_includes": "하위 그룹 ({n})", "g_partof": "상위 그룹 ({n})",
     },
     "ja": {
         "brand": "CDDAレシピ", "search_ph": "アイテム名で検索…", "mods": "MOD",
@@ -103,6 +107,8 @@ UI_STRINGS = {
         "settings": "設定", "saved": "保存しました。",
         "npc_loot": "NPC所持の入手元を表示",
         "npc_loot_help": "「入手」にNPC所持グループ（NC_*）も含める。既定はオフ — ノイズが多いです。",
+        "group": "ルートグループ", "g_contains": "入りうるアイテム ({n})",
+        "g_includes": "内包グループ ({n})", "g_partof": "上位グループ ({n})",
     },
 }
 
@@ -238,6 +244,8 @@ class DataIndex:
         self.by_cat = {}         # category code -> [result id, ...]
         self.item_groups_of = {}  # item id -> set(group id) it appears in (direct)
         self.group_parents = {}   # child group id -> set(parent group id)
+        self.group_items = {}     # group id -> set(item id) it can spawn (direct)
+        self.group_subgroups = {}  # group id -> set(child group id)
         self._groups = []        # raw item_group defs, processed after load
         self._namecache = {}
         self._desccache = {}
@@ -295,6 +303,8 @@ class DataIndex:
             if not isinstance(gid, str):
                 continue
             items, subgroups = self._group_members(g)
+            self.group_items.setdefault(gid, set()).update(items)
+            self.group_subgroups.setdefault(gid, set()).update(subgroups)
             for it in items:
                 self.item_groups_of.setdefault(it, set()).add(gid)
             for sg in subgroups:
@@ -491,6 +501,17 @@ def item_url(iid, ctx):
 def a_item(idx, iid, ctx, label=None):
     return '<a class="item" href="%s">%s</a>' % (
         item_url(iid, ctx), h(label if label is not None else idx.name(iid)))
+
+
+def group_url(gid, ctx):
+    p = {"group": gid, "ver": ctx["ver"], "lang": ctx["lang"]}
+    if ctx["mods"]:
+        p["mods"] = 1
+    return "/group?" + urlencode(p)
+
+
+def a_group(gid, ctx):
+    return '<a class="chip" href="%s">%s</a>' % (group_url(gid, ctx), h(gid.replace("_", " ")))
 
 
 def group_html(idx, group, ctx, depth=0):
@@ -753,8 +774,14 @@ def page(title, body, ctx, q=""):
                     for c in codes)
     mods_chk = " checked" if ctx["mods"] else ""
     # settings form reloads the current page; search form goes to "/"
-    action = "/item" if ctx.get("item_id") else "/"
-    hidden = ('<input type=hidden name=id value="%s">' % h(ctx["item_id"])) if ctx.get("item_id") else ""
+    if ctx.get("item_id"):
+        action = "/item"
+        hidden = '<input type=hidden name=id value="%s">' % h(ctx["item_id"])
+    elif ctx.get("group_id"):
+        action = "/group"
+        hidden = '<input type=hidden name=group value="%s">' % h(ctx["group_id"])
+    else:
+        action, hidden = "/", ""
     header = """
 <header>
   <a class="brand" href="/?ver=%(ver)d&lang=%(lang)s%(mods_q)s">🔧 %(brand)s</a>
@@ -858,10 +885,10 @@ def render_item(ctx):
                      '<ul class="ing">%s</ul></div>'
                      % (h(T(ctx, "disassembles")), items))
 
-    # where it's found (loot/item groups) — show the count; collapse if long
+    # where it's found (loot/item groups) — clickable, like items; collapse if long
     locs = idx.found_in(rid)
     if locs:
-        chips = "".join('<span class="chip loc">%s</span>' % h(g.replace("_", " ")) for g in locs)
+        chips = "".join(a_group(g, ctx) for g in locs)
         hdr = "%s · %d" % (h(T(ctx, "found")), len(locs))
         if len(locs) > 30:
             parts.append('<details class="foundbox"><summary class="section">%s</summary>'
@@ -876,6 +903,33 @@ def render_item(ctx):
         parts.append('<div class="section">%s</div><div class="chips">%s</div>'
                      % (h(T(ctx, "used_in", n=len(users))), chips))
     return page("%s — CDDA Recipes" % title, "".join(parts), ctx)
+
+
+def render_group(ctx, gid):
+    """A loot/item group shown like an item page: what it can spawn, the groups
+    it includes, and the groups it's part of — all clickable."""
+    idx = get_index(ctx["ver"], ctx["mods"])
+    idx.tr = get_translator(ctx["ver"], ctx["lang"])
+    ctx["group_id"] = gid
+    parts = ['<div class="idtag">%s</div><h1 class="item">%s</h1><div class="idtag">%s</div>'
+             % (h(T(ctx, "group")), h(gid.replace("_", " ")), h(gid))]
+
+    def section(key, chips_html, n):
+        parts.append('<div class="section">%s</div><div class="chips">%s</div>'
+                     % (h(T(ctx, key, n=n)), chips_html))
+
+    items = sorted(idx.group_items.get(gid, ()), key=lambda x: idx.name(x).lower())
+    if items:
+        section("g_contains", "".join(
+            '<a class="chip" href="%s">%s</a>' % (item_url(it, ctx), h(idx.name(it)))
+            for it in items), len(items))
+    subs = sorted(idx.group_subgroups.get(gid, ()))
+    if subs:
+        section("g_includes", "".join(a_group(s, ctx) for s in subs), len(subs))
+    parents = sorted(idx.group_parents.get(gid, ()))
+    if parents:
+        section("g_partof", "".join(a_group(p, ctx) for p in parents), len(parents))
+    return page("%s — CDDA Recipes" % gid, "".join(parts), ctx)
 
 
 def render_landing(ctx):
@@ -1008,6 +1062,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if u.path == "/item" and ctx["item_id"]:
                 self._send(render_item(ctx))
+            elif u.path == "/group" and first("group"):
+                self._send(render_group(ctx, first("group")))
             elif u.path == "/settings":
                 saved = first("save") == "1"
                 if saved:                       # checkbox absent => unchecked

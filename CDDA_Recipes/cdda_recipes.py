@@ -14,6 +14,7 @@ its own recipe (forward link) or follow the "used as an ingredient in" list
 日本語 / …). Run it and your browser opens automatically.
 """
 import os
+import re
 import glob
 import json
 import html
@@ -460,6 +461,19 @@ class DataIndex:
                 self.reqs[eid] = e
             elif t == "tool_quality" and isinstance(eid, str):
                 self.quals[eid] = name_str(e.get("name")) or eid
+            elif t == "json_flag" and isinstance(eid, str):
+                if isinstance(e.get("info"), str):
+                    self.flag_info[eid] = e["info"]
+            elif t == "item_action" and isinstance(eid, str):
+                nm = name_str(e.get("name"))
+                if nm:
+                    self.action_names[eid] = nm
+            elif t == "MONSTER" and e.get("death_drops") is not None:
+                self._monsters.append(e)
+            elif t == "mapgen":
+                self._mapgens.append(e)
+            elif t == "palette":
+                self._palettes.append(e)
             if isinstance(eid, str):
                 self.by_id.setdefault(eid, e)
 
@@ -744,6 +758,101 @@ class DataIndex:
         rows = [(self.name(rid), rid) for rid in self.by_result]
         rows.sort(key=lambda x: x[0].lower())
         return rows
+
+    def all_items(self):
+        rows = [(self.name(i), i) for i in self.item_ids]
+        rows.sort(key=lambda x: x[0].lower())
+        return rows
+
+    def book_info(self, rid):
+        """If rid (following copy-from) is a BOOK, the skill it trains and the
+        level range; else None. Novels etc. return {} (a book, but no skill)."""
+        seen, info, is_book = set(), {}, False
+        cur = rid
+        while isinstance(cur, str) and cur not in seen:
+            seen.add(cur)
+            e = self.by_id.get(cur)
+            if not e:
+                break
+            if e.get("type") == "BOOK":
+                is_book = True
+            for k in ("skill", "max_level", "required_level"):
+                if k not in info and e.get(k) is not None:
+                    info[k] = e[k]
+            cur = e.get("copy-from")
+        return info if is_book else None
+
+    def _chain(self, rid):
+        """The item def + its copy-from ancestors, most-derived first."""
+        out, seen, cur = [], set(), rid
+        while isinstance(cur, str) and cur not in seen:
+            seen.add(cur)
+            e = self.by_id.get(cur)
+            if not e:
+                break
+            out.append(e)
+            cur = e.get("copy-from")
+        return out
+
+    def flags_of(self, rid):
+        """Flags on an item, merging copy-from + extend, minus delete."""
+        flags = set()
+        for e in reversed(self._chain(rid)):   # parents first so child can delete
+            for f in (e.get("flags") or []):
+                if isinstance(f, str):
+                    flags.add(f)
+            ext = e.get("extend")
+            if isinstance(ext, dict):
+                for f in (ext.get("flags") or []):
+                    if isinstance(f, str):
+                        flags.add(f)
+            dl = e.get("delete")
+            if isinstance(dl, dict):
+                for f in (dl.get("flags") or []):
+                    flags.discard(f)
+        return flags
+
+    def qualities_of(self, rid):
+        for e in self._chain(rid):
+            q = e.get("qualities")
+            if q:
+                return [(it[0], it[1] if len(it) > 1 else 1)
+                        for it in q if isinstance(it, list) and it]
+        return []
+
+    def techniques_of(self, rid):
+        for e in self._chain(rid):
+            t = e.get("techniques")
+            if t:
+                return [x for x in t if isinstance(x, str)]
+        return []
+
+    def actions_of(self, rid):
+        """Readable labels for an item's use_action(s)."""
+        for e in self._chain(rid):
+            ua = e.get("use_action")
+            if ua is not None:
+                out, seen = [], set()
+                for x in (ua if isinstance(ua, list) else [ua]):
+                    lbl = None
+                    if isinstance(x, str):
+                        lbl = self.action_names.get(x) or x.replace("_", " ").lower()
+                    elif isinstance(x, dict):
+                        lbl = (name_str(x.get("name")) or name_str(x.get("menu_text"))
+                               or (x.get("type") or "").replace("_", " "))
+                    if lbl:
+                        lbl = self.tr(lbl)
+                        if lbl not in seen:
+                            seen.add(lbl)
+                            out.append(lbl)
+                return out
+        return []
+
+    def flag_desc(self, flag):
+        info = self.flag_info.get(flag)
+        if not info:
+            return None
+        return self.tr(re.sub(r"<[^>]+>", "", info)).strip()
 
 
 # ---------------------------------------------------------------------------
@@ -1371,6 +1480,42 @@ def _stats_html(idx, ctx, rid):
     return '<div class="stats">%s</div>' % "  ·  ".join(bits)
 
 
+def _abilities_html(idx, ctx, rid):
+    """What you can do with the item: tool qualities, use actions, melee
+    techniques, and its flags (with descriptions on hover)."""
+    def field(label, value_html):
+        return ('<div class="f"><span class="k">%s</span><span class="v">%s</span></div>'
+                % (h(label), value_html))
+
+    rows = []
+    quals = idx.qualities_of(rid)
+    if quals:
+        rows.append(field(T(ctx, "toolq"), ", ".join(
+            "%s&nbsp;%s" % (h(idx.tr(idx.quals.get(q, q))), h(lv)) for q, lv in quals)))
+    acts = idx.actions_of(rid)
+    if acts:
+        rows.append(field(T(ctx, "actions"), ", ".join(h(a) for a in acts)))
+    techs = idx.techniques_of(rid)
+    if techs:
+        rows.append(field(T(ctx, "techniques"),
+                          ", ".join(h(idx.name(t)) for t in techs)))
+    flags = sorted(idx.flags_of(rid))
+    flag_html = ""
+    if flags:
+        chips = []
+        for f in flags:
+            d = idx.flag_desc(f)
+            tip = ' title="%s"' % h(d) if d else ""
+            chips.append('<span class="chip flag"%s>%s</span>' % (tip, h(f)))
+        flag_html = ('<div class="f"><span class="k">%s</span>'
+                     '<span class="v"><div class="chips">%s</div></span></div>'
+                     % (h(T(ctx, "flags")), "".join(chips)))
+    if not rows and not flag_html:
+        return ""
+    return ('<div class="recipe"><div class="rtitle">🛠 %s</div>%s%s</div>'
+            % (h(T(ctx, "abilities")), "".join(rows), flag_html))
+
+
 def render_item(ctx):
     idx = get_index(ctx["ver"], ctx["mods"])
     idx.tr = get_translator(ctx["ver"], ctx["lang"])
@@ -1381,6 +1526,7 @@ def render_item(ctx):
     if desc:
         parts.append('<div class="desc">%s</div>' % h(desc))
     parts.append(_stats_html(idx, ctx, rid))
+    parts.append(_abilities_html(idx, ctx, rid))
 
     recipes = idx.by_result.get(rid, [])
     if recipes:

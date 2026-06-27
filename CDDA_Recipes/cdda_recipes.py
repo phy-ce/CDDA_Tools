@@ -930,6 +930,16 @@ class DataIndex:
             return None
         return self.tr(re.sub(r"<[^>]+>", "", info)).strip()
 
+    def items_with_flag(self, flag):
+        """Items carrying a flag (reverse of flags_of), built once on demand."""
+        if self._flag_items is None:
+            fi = {}
+            for iid in self.item_ids:
+                for f in self.flags_of(iid):
+                    fi.setdefault(f, set()).add(iid)
+            self._flag_items = fi
+        return self._flag_items.get(flag, set())
+
 
 # ---------------------------------------------------------------------------
 # Caches: one index per (version, include-mods); one translator per (ver, loc)
@@ -1725,7 +1735,8 @@ def _abilities_html(idx, ctx, rid):
         for f in flags:
             d = idx.flag_desc(f)
             tip = ' title="%s"' % h(d) if d else ""
-            chips.append('<span class="chip flag"%s>%s</span>' % (tip, h(f)))
+            chips.append('<a class="chip flag" href="%s"%s>%s</a>'
+                         % (flag_url(f, ctx), tip, h(f)))
         flag_html = ('<div class="f"><span class="k">%s</span>'
                      '<span class="v"><div class="chips">%s</div></span></div>'
                      % (h(T(ctx, "flags")), "".join(chips)))
@@ -2042,6 +2053,24 @@ def render_mechanics(ctx):
     return page(T(ctx, "mech_title"), body, ctx, nav="mechanics")
 
 
+def render_flag(ctx, flag):
+    """A flag's own page: its description and every item that carries it."""
+    idx = get_index(ctx["ver"], ctx["mods"])
+    idx.tr = get_translator(ctx["ver"], ctx["lang"])
+    parts = ['<div class="idtag">%s</div><h1 class="item">%s</h1>'
+             % (h(T(ctx, "flag_single")), h(flag))]
+    desc = idx.flag_desc(flag)
+    if desc:
+        parts.append('<div class="desc">%s</div>' % h(desc))
+    items = sorted(idx.items_with_flag(flag), key=lambda x: idx.name(x).lower())
+    if items:
+        chips = ['<a class="chip" href="%s">%s</a>' % (item_url(i, ctx), h(idx.name(i)))
+                 for i in items]
+        parts.append('<div class="section">%s</div>%s'
+                     % (h(T(ctx, "items_with_flag", n=len(items))), _more_chips(chips, 80)))
+    return page("%s — CDDA Recipes" % flag, "".join(parts), ctx, nav="items")
+
+
 # ---------------------------------------------------------------------------
 # HTTP server
 # ---------------------------------------------------------------------------
@@ -2089,6 +2118,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(render_loot(ctx))
             elif u.path == "/mechanics":
                 self._send(render_mechanics(ctx))
+            elif u.path == "/flag" and first("flag"):
+                self._send(render_flag(ctx, first("flag")))
             elif u.path == "/settings":
                 saved = first("save") == "1"
                 if saved:                       # checkbox absent => unchecked

@@ -741,16 +741,37 @@ def font_config_path(version: dict):
     return os.path.join(game_root_of(version), "config", "fonts.json")
 
 
-def load_font_config(version: dict):
-    """config/fonts.json → 없으면 data/fontdata.json(기본값) → 없으면 빈 dict."""
+def _font_template_paths(version: dict):
+    """게임 기본 글꼴 템플릿 후보 (CDDA=data/fontdata.json, CDBN=data/raw/fonts.json)."""
     root = game_root_of(version)
-    for p in (font_config_path(version), os.path.join(root, "data", "fontdata.json")):
+    return [os.path.join(root, "data", "fontdata.json"),
+            os.path.join(root, "data", "raw", "fonts.json")]
+
+
+def load_font_config(version: dict):
+    """config/fonts.json → 없으면 게임 기본 템플릿 → 없으면 빈 dict."""
+    for p in [font_config_path(version)] + _font_template_paths(version):
         if os.path.isfile(p):
             try:
                 return json.load(open(p, encoding="utf-8"))
             except Exception:
                 pass
     return {}
+
+
+def supported_font_categories(version: dict):
+    """이 게임이 지원하는 typeface 카테고리. 기본 템플릿(data/...)을 우선 근거로 한다.
+    (예: CDBN 은 gui_typeface 가 없어 그걸 쓰면 JSON 오류가 난다.)"""
+    for p in _font_template_paths(version):  # config 가 아니라 게임 기본 템플릿 기준
+        if os.path.isfile(p):
+            try:
+                d = json.load(open(p, encoding="utf-8"))
+                cats = [c for c in FONT_CATEGORIES if c in d]
+                if cats:
+                    return cats
+            except Exception:
+                pass
+    return list(FONT_CATEGORIES)
 
 
 def _font_entry_path(entry):
@@ -762,6 +783,8 @@ def apply_font_to_config(version: dict, font_abs_path: str, categories: list):
     기존 파일은 .bak 로 백업한 뒤 기록. 기록한 경로를 반환."""
     root = game_root_of(version)
     rel = os.path.relpath(font_abs_path, root).replace("\\", "/")
+    supported = supported_font_categories(version)
+    categories = [c for c in categories if c in supported]  # 미지원 필드 방지(CDBN gui_typeface 등)
     cfg = load_font_config(version)
     for cat in categories:
         cur = cfg.get(cat)
@@ -1624,8 +1647,12 @@ class ResourceTab:
                     "map_typeface": False, "overmap_typeface": False}
         labels = {"typeface": "font_cat_typeface", "gui_typeface": "font_cat_gui",
                   "map_typeface": "font_cat_map", "overmap_typeface": "font_cat_overmap"}
+        # 게임이 지원하는 카테고리만 노출 (CDBN 은 gui_typeface 없음)
+        supported = supported_font_categories(self.version)
         cvars = {}
         for cat in FONT_CATEGORIES:
+            if cat not in supported:
+                continue
             v = tk.BooleanVar(value=defaults[cat])
             cvars[cat] = v
             ttk.Checkbutton(body, text=t(labels[cat]), variable=v).pack(anchor="w")
@@ -1658,7 +1685,7 @@ class ResourceTab:
         if not state["ok"]:
             return None
 
-        cats = [c for c in FONT_CATEGORIES if cvars[c].get()]
+        cats = [c for c in FONT_CATEGORIES if c in cvars and cvars[c].get()]
         sizes = {}
         for key, var in size_vars.items():
             txt = var.get().strip()

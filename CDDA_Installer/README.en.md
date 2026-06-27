@@ -69,13 +69,20 @@ CDDA only uses fonts referenced by `config/fonts.json`, even if the file sits in
 
 1. Add (or select a bundled) font, then click **🅰 Apply**.
 2. Choose where to apply it — Main (game text) / Menus (GUI) / Map / Overmap.
-3. The tool edits `config/fonts.json` to put that font **first (primary)** in the chosen
-   categories, keeping the existing fonts as fallback. The previous config is backed up as
-   `fonts.json.bak`; restart the game to see the change.
+3. (optional) Enter a **font size** — Width / Height / Size.
+4. On apply:
+   - **Typeface**: `config/fonts.json` gets that font as the primary (first) entry, keeping
+     existing fonts as fallback.
+   - **Size**: `config/options.json` `FONT_WIDTH/HEIGHT/SIZE` values are updated.
+   - The previous configs are backed up as `.bak`; restart the game to see the change.
 
-`config/fonts.json` is created from `data/fontdata.json` on first run; the format follows the
-official doc `doc/user-guides/FONT_OPTIONS.md`. Bundled fonts (Terminus/unifont, etc.) are
-delete-protected so they can't be removed and break the game.
+`config/fonts.json` is seeded from `data/fontdata.json`, and `config/options.json` is created,
+on first run. Formats follow the upstream docs/source (`doc/user-guides/FONT_OPTIONS.md`,
+`src/options.cpp`). The size fields are enabled only when `options.json` exists (game run once).
+Bundled fonts (Terminus/unifont, etc.) are delete-protected.
+
+> Note: finer settings (map/overmap font sizes, etc.) can also be changed in-game via
+> **Options → Graphics** — both write to the same `options.json`.
 
 > CDDA has no central content repository/API, so a "browse a list and pick" approach isn't possible.
 > Instead you fetch via a GitHub URL or zip/file link (most content lives on GitHub).

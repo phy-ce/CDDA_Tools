@@ -209,8 +209,17 @@ STRINGS = {
         "font_apply_ok": "적용",
         "cancel": "취소",
         "font_applied": "적용했습니다:\n{dest}\n\n게임을 재시작하면 반영됩니다. (이전 설정은 .bak 로 백업됨)",
-        "font_apply_none": "적용할 영역을 하나 이상 선택하세요.",
+        "font_apply_none": "적용할 영역이나 크기를 하나 이상 지정하세요.",
         "font_apply_failed": "폰트 적용 실패",
+        "font_size_section": "폰트 크기 (options.json — 비우면 그대로)",
+        "fs_width": "폭",
+        "fs_height": "높이",
+        "fs_size": "크기",
+        "font_size_disabled": "※ 크기는 게임을 한 번 실행한 뒤 바꿀 수 있습니다 (options.json 없음).",
+        "font_size_bad": "크기 값은 숫자여야 합니다.",
+        "applied_summary": "적용 완료. 게임을 재시작하면 반영됩니다.\n{detail}",
+        "applied_typeface": "• 글꼴: {dest}",
+        "applied_sizes": "• 크기 {n}개 항목 변경 (options.json)",
     },
     "en": {
         "app_title": "Cataclysm Installer & Version Manager (CDDA / CDBN)",
@@ -356,8 +365,17 @@ STRINGS = {
         "font_apply_ok": "Apply",
         "cancel": "Cancel",
         "font_applied": "Applied:\n{dest}\n\nRestart the game to see the change. (previous config backed up as .bak)",
-        "font_apply_none": "Select at least one area to apply.",
+        "font_apply_none": "Specify at least one area or a size.",
         "font_apply_failed": "Failed to apply font",
+        "font_size_section": "Font size (options.json — blank = keep)",
+        "fs_width": "Width",
+        "fs_height": "Height",
+        "fs_size": "Size",
+        "font_size_disabled": "※ Sizes can be changed after running the game once (no options.json).",
+        "font_size_bad": "Size values must be numbers.",
+        "applied_summary": "Done. Restart the game to see the change.\n{detail}",
+        "applied_typeface": "• Typeface: {dest}",
+        "applied_sizes": "• Updated {n} size value(s) (options.json)",
     },
 }
 
@@ -733,6 +751,57 @@ def apply_font_to_config(version: dict, font_abs_path: str, categories: list):
     with open(dest, "w", encoding="utf-8") as fh:
         json.dump(cfg, fh, ensure_ascii=False, indent=2)
     return dest
+
+
+# ---- 폰트 크기 등 게임 옵션 (config/options.json 편집) -------------------
+# 형식 근거: CleverRaven/Cataclysm-DDA  src/options.cpp (serialize)
+# options.json 은 {"info","default","name","value"} 객체의 배열이고,
+# 게임은 로드 시 name+value 만 읽는다(value 는 문자열). 첫 실행 시 생성됨.
+FONT_SIZE_KEYS = ["FONT_WIDTH", "FONT_HEIGHT", "FONT_SIZE"]
+
+
+def options_path(version: dict):
+    return os.path.join(game_root_of(version), "config", "options.json")
+
+
+def load_options(version: dict):
+    """config/options.json 을 리스트로 반환. 없거나 형식 이상이면 None."""
+    p = options_path(version)
+    if not os.path.isfile(p):
+        return None
+    try:
+        data = json.load(open(p, encoding="utf-8"))
+    except Exception:
+        return None
+    return data if isinstance(data, list) else None
+
+
+def get_option_value(options_list, name):
+    for o in options_list or []:
+        if isinstance(o, dict) and o.get("name") == name:
+            return o.get("value")
+    return None
+
+
+def set_option_values(version: dict, changes: dict):
+    """{name: value} 의 value 만 갱신해 기록. 백업 후 저장. 적용 개수 반환.
+    options.json 이 없으면 None(게임 미실행)."""
+    p = options_path(version)
+    data = load_options(version)
+    if data is None:
+        return None
+    applied = 0
+    for o in data:
+        if isinstance(o, dict) and o.get("name") in changes:
+            o["value"] = str(changes[o["name"]])
+            applied += 1
+    try:
+        shutil.copy2(p, p + ".bak")
+    except Exception:
+        pass
+    with open(p, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, ensure_ascii=False, indent=2)
+    return applied
 
 
 # ---------------------------------------------------------------------------
@@ -1420,24 +1489,35 @@ class ResourceTab:
         except Exception as e:
             messagebox.showerror(t("mod_open_failed"), str(e), parent=self.win)
 
-    # ---- 폰트 적용 (config/fonts.json) ----
+    # ---- 폰트 적용 (config/fonts.json 글꼴 + config/options.json 크기) ----
     def apply_font(self):
         it = self._selected()
         if not it:
             messagebox.showinfo(t("need_select_title"), t("mod_remove_select"), parent=self.win); return
-        cats = self._ask_font_categories(it["name"])
-        if cats is None:
+        res = self._ask_font_apply(it["name"])
+        if res is None:
             return  # 취소
-        if not cats:
+        cats, sizes = res
+        if not cats and not sizes:
             messagebox.showwarning(t("font_apply_title"), t("font_apply_none"), parent=self.win); return
+        detail = []
         try:
-            dest = apply_font_to_config(self.version, it["path"], cats)
+            if cats:
+                dest = apply_font_to_config(self.version, it["path"], cats)
+                detail.append(t("applied_typeface", dest=dest))
+            if sizes:
+                n = set_option_values(self.version, sizes)
+                if n:
+                    detail.append(t("applied_sizes", n=n))
         except Exception as e:
             messagebox.showerror(t("font_apply_failed"), str(e), parent=self.win); return
-        messagebox.showinfo(t("done_title"), t("font_applied", dest=dest), parent=self.win)
+        messagebox.showinfo(t("done_title"),
+                            t("applied_summary", detail="\n".join(detail)), parent=self.win)
 
-    def _ask_font_categories(self, font_name):
-        """적용할 글꼴 영역 선택 대화창. 선택 리스트(빈 리스트 가능) 또는 None(취소)."""
+    def _ask_font_apply(self, font_name):
+        """글꼴 영역 + 크기 입력 대화창. (cats, sizes) 또는 None(취소).
+        cats: 적용할 typeface 카테고리 리스트. sizes: {옵션키: 값} (변경분만)."""
+        opts = load_options(self.version)  # None 이면 options.json 없음(크기 비활성)
         dlg = tk.Toplevel(self.win)
         dlg.title(t("font_apply_title"))
         dlg.transient(self.win)
@@ -1445,6 +1525,7 @@ class ResourceTab:
         dlg.resizable(False, False)
         ttk.Label(dlg, text=t("font_apply_prompt", name=font_name),
                   padding=(12, 10)).pack(anchor="w")
+
         body = ttk.Frame(dlg, padding=(14, 0))
         body.pack(fill="x")
         defaults = {"typeface": True, "gui_typeface": True,
@@ -1456,6 +1537,22 @@ class ResourceTab:
             v = tk.BooleanVar(value=defaults[cat])
             cvars[cat] = v
             ttk.Checkbutton(body, text=t(labels[cat]), variable=v).pack(anchor="w")
+
+        # 크기 섹션 (options.json)
+        sf = ttk.LabelFrame(dlg, text=t("font_size_section"), padding=10)
+        sf.pack(fill="x", padx=12, pady=(8, 0))
+        size_vars = {}
+        labels_fs = {"FONT_WIDTH": "fs_width", "FONT_HEIGHT": "fs_height", "FONT_SIZE": "fs_size"}
+        if opts is None:
+            ttk.Label(sf, text=t("font_size_disabled"), foreground="#b06000").pack(anchor="w")
+        else:
+            row = ttk.Frame(sf); row.pack(fill="x")
+            for key in FONT_SIZE_KEYS:
+                ttk.Label(row, text=t(labels_fs[key])).pack(side="left")
+                var = tk.StringVar(value=str(get_option_value(opts, key) or ""))
+                size_vars[key] = var
+                ttk.Entry(row, textvariable=var, width=5).pack(side="left", padx=(2, 10))
+
         state = {"ok": False}
         btns = ttk.Frame(dlg, padding=10)
         btns.pack(fill="x")
@@ -1468,7 +1565,20 @@ class ResourceTab:
         dlg.wait_window()
         if not state["ok"]:
             return None
-        return [c for c in FONT_CATEGORIES if cvars[c].get()]
+
+        cats = [c for c in FONT_CATEGORIES if cvars[c].get()]
+        sizes = {}
+        for key, var in size_vars.items():
+            txt = var.get().strip()
+            if not txt:
+                continue
+            if not txt.isdigit():
+                messagebox.showwarning(t("font_apply_title"), t("font_size_bad"), parent=self.win)
+                return ([], {})  # 잘못된 입력 → 아무것도 안 함
+            cur = get_option_value(opts, key)
+            if str(cur) != txt:        # 바뀐 값만
+                sizes[key] = txt
+        return cats, sizes
 
 
 def main():

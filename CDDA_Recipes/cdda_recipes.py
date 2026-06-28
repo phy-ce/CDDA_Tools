@@ -271,6 +271,28 @@ MECH_DOC = {
          "activities that use it carry <code>refuel_fires: true</code> in "
          "<code>player_activities</code>. (The separate <code>LOOT_WOOD</code> "
          "zone is just a tidy-up destination, not an auto-feed source.)</p>"),
+        ("Time, turns and action cost",
+         "<p>The world advances in <b>turns of 1 second</b>. Each creature gets "
+         "<code>speed</code> <b>move points</b> per turn (a normal human is 100), "
+         "spends them on actions, and when they run out that second passes. Higher "
+         "speed = more moves = more actions per second. Walking one tile costs that "
+         "tile's move cost (~100 on flat ground), so at speed 100 a step is about a "
+         "second.</p>"
+         "<p>A player's melee-swing move cost builds up like this (from the BN "
+         "source):</p><ul>"
+         "<li>weapon base = <code>65 + volume/62.5 mL + weight/60 g</code> "
+         "(bulkier and heavier swings slower)</li>"
+         "<li>start at <code>base / 2</code>, add torso + average-hand "
+         "<b>encumbrance</b>, multiply by a <b>stamina</b> penalty (1× normally, "
+         "rising toward 2× below 25% stamina)</li>"
+         "<li>add a <b>skill</b> term <code>(base/2) × (15 − melee skill) / 15</code> "
+         "(skill 15 removes it), then subtract your <b>Dexterity</b></li>"
+         "<li>finally martial-arts and mutation modifiers; the result can't drop "
+         "below 25 moves</li></ul>"
+         "<p>Since 100 moves = one second at speed 100, a 100-move swing is one hit "
+         "per second; lighter, more skilled and more dexterous = fewer moves = "
+         "faster. Monsters skip all this — they carry an explicit "
+         "<code>attack_cost</code> (in moves) in their JSON.</p>"),
     ],
     "ko": [
         ("데이터 vs. 엔진",
@@ -314,6 +336,22 @@ MECH_DOC = {
          "활동들은 <code>player_activities</code>에 <code>refuel_fires: true</code>를 "
          "가진다. (별개의 <code>LOOT_WOOD</code> 존은 정리용 목적지일 뿐, 자동 투입 "
          "공급원이 아니다.)</p>"),
+        ("시간·턴·행동 비용",
+         "<p>세상은 <b>1초짜리 턴</b>으로 진행된다. 각 생물은 매 턴 <code>speed</code>만큼 "
+         "<b>무브(이동점수)</b>를 받고(보통 사람 100), 행동에 소비하다가 무브가 떨어지면 "
+         "그 1초가 흐른다. speed가 높을수록 무브가 많아 초당 더 많이 행동한다. 한 칸 이동은 "
+         "그 지형의 이동비용(평지 ≈100)이라, speed 100이면 한 걸음이 약 1초.</p>"
+         "<p>플레이어 근접 공격의 무브 비용은 이렇게 쌓인다(BN 소스 기준):</p><ul>"
+         "<li>무기 기본 = <code>65 + 부피/62.5 mL + 무게/60 g</code> (크고 무거울수록 "
+         "느림)</li>"
+         "<li><code>기본 / 2</code>에서 시작 → 몸통+양손 평균 <b>거추장(encumbrance)</b>을 "
+         "더함 → <b>스태미나</b> 페널티 곱함(평소 1배, 스태미나 25% 미만에서 최대 2배)</li>"
+         "<li><b>스킬</b> 항 <code>(기본/2) × (15 − 근접스킬) / 15</code> 더함(스킬 15면 "
+         "사라짐), 그다음 <b>민첩</b>을 뺌</li>"
+         "<li>마지막으로 무술·변이 보정, 결과는 최소 25무브 아래로는 안 내려감</li></ul>"
+         "<p>speed 100에서 100무브 = 1초이므로, 100무브 공격은 초당 1회다. 가볍고·숙련되고·"
+         "민첩할수록 무브가 줄어 빨라진다. 몬스터는 이 계산을 거치지 않고 JSON에 "
+         "<code>attack_cost</code>(무브)를 직접 가진다.</p>"),
     ],
     "ja": [
         ("データ vs. エンジン",
@@ -357,6 +395,22 @@ MECH_DOC = {
          "<p>データでは <code>SOURCE_FIREWOOD</code> 戦利品ゾーンとして定義され、使用する"
          "活動は <code>player_activities</code> に <code>refuel_fires: true</code> を持つ。"
          "（別の <code>LOOT_WOOD</code> ゾーンは整理用の目的地で、自動補給源ではない。）</p>"),
+        ("時間・ターン・行動コスト",
+         "<p>世界は<b>1秒のターン</b>で進む。各クリーチャーは毎ターン<code>speed</code>分の"
+         "<b>ムーブ（行動点）</b>を得て（通常の人間は100）、行動で消費し、尽きるとその1秒が"
+         "経過する。speedが高いほどムーブが多く、1秒あたりの行動が増える。1マス移動はその"
+         "地形の移動コスト（平地≈100）なので、speed 100なら一歩が約1秒。</p>"
+         "<p>プレイヤーの近接攻撃のムーブコストはこう積み上がる（BNソース準拠）:</p><ul>"
+         "<li>武器の基礎 = <code>65 + 体積/62.5 mL + 重量/60 g</code>（大きく重いほど"
+         "遅い）</li>"
+         "<li><code>基礎 / 2</code>から開始 → 胴+両手平均の<b>かさばり（encumbrance）</b>を"
+         "加算 → <b>スタミナ</b>ペナルティを乗算（通常1倍、スタミナ25%未満で最大2倍）</li>"
+         "<li><b>スキル</b>項 <code>(基礎/2) × (15 − 近接スキル) / 15</code> を加算（スキル"
+         "15で消滅）、その後<b>器用さ</b>を減算</li>"
+         "<li>最後に武術・変異補正、結果は最低25ムーブを下回らない</li></ul>"
+         "<p>speed 100では100ムーブ=1秒なので、100ムーブの攻撃は毎秒1回。軽く・熟練し・"
+         "器用なほどムーブが減って速くなる。モンスターはこの計算を経ず、JSONに"
+         "<code>attack_cost</code>（ムーブ）を直接持つ。</p>"),
     ],
 }
 

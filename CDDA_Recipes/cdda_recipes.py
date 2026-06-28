@@ -89,6 +89,13 @@ UI_STRINGS = {
         "quality_single": "Tool quality", "quality_items_label": "Items with this quality ({n})",
         "monster_single": "Monster", "monster_drop_group": "Death-drop group",
         "monster_drops": "Can drop ({n})",
+        "atk_time_fmt": "attack ~{a}–{b}s (skilled→new, {m0}–{m1} moves)",
+        "atk_tip": ("Move cost per swing (100 moves = 1s at speed 100).\n"
+                    "Base = 65 + volume/62.5mL + weight/60g.\n"
+                    "Range shown is melee skill 15 (fast) → 0 (slow).\n"
+                    "Dexterity lowers it further; encumbrance and low stamina raise "
+                    "it. Floored at 25 moves.\n"
+                    "Monsters use a fixed attack_cost instead — see Mechanics."),
     },
     "ko": {
         "brand": "CDDA 레시피", "search_ph": "아이템 이름 검색…", "mods": "모드",
@@ -139,6 +146,12 @@ UI_STRINGS = {
         "quality_single": "도구 품질", "quality_items_label": "이 품질을 가진 아이템 ({n})",
         "monster_single": "몬스터", "monster_drop_group": "사망 드롭 그룹",
         "monster_drops": "드롭 가능 ({n})",
+        "atk_time_fmt": "공격 ~{a}–{b}초 (숙련→초보, {m0}–{m1}무브)",
+        "atk_tip": ("한 번 휘두르는 데 드는 무브 (speed 100에서 100무브 = 1초).\n"
+                    "기본 = 65 + 부피/62.5mL + 무게/60g.\n"
+                    "표시 범위는 근접 스킬 15(빠름) → 0(느림).\n"
+                    "민첩으로 더 줄고, 거추장·낮은 스태미나로 늘어남. 최소 25무브.\n"
+                    "몬스터는 고정 attack_cost를 씀 — 자세히는 메커니즘 페이지."),
     },
     "ja": {
         "brand": "CDDAレシピ", "search_ph": "アイテム名で検索…", "mods": "MOD",
@@ -189,6 +202,12 @@ UI_STRINGS = {
         "quality_single": "道具品質", "quality_items_label": "この品質を持つアイテム ({n})",
         "monster_single": "モンスター", "monster_drop_group": "死亡ドロップグループ",
         "monster_drops": "ドロップ可能 ({n})",
+        "atk_time_fmt": "攻撃 ~{a}–{b}秒 (熟練→初心者, {m0}–{m1}ムーブ)",
+        "atk_tip": ("1回振るのに必要なムーブ (speed 100で100ムーブ=1秒).\n"
+                    "基礎 = 65 + 体積/62.5mL + 重量/60g.\n"
+                    "表示範囲は近接スキル15(速)→0(遅).\n"
+                    "器用さでさらに減少、かさばり・低スタミナで増加. 最低25ムーブ.\n"
+                    "モンスターは固定のattack_costを使用 — 詳細は仕組みページ."),
     },
 }
 
@@ -1296,6 +1315,29 @@ _LOC_DROP = {"basement", "roof", "first", "second", "third", "ground", "upper",
              "open", "closed", "interior", "entrance"}
 
 
+def _to_ml(v):
+    m = re.match(r"\s*([\d.]+)\s*([a-zA-Z]*)", str(v))
+    if not m:
+        return None
+    try:
+        n = float(m.group(1))
+    except ValueError:
+        return None
+    return n * 1000 if m.group(2).lower() == "l" else n
+
+
+def _to_g(v):
+    m = re.match(r"\s*([\d.]+)\s*([a-zA-Z]*)", str(v))
+    if not m:
+        return None
+    try:
+        n = float(m.group(1))
+    except ValueError:
+        return None
+    u = m.group(2).lower()
+    return n * 1000 if u == "kg" else (n / 1000 if u == "mg" else n)
+
+
 def _loc_base(loc):
     """Collapse a mapgen om_terrain id to its base place: drop variant tokens
     (numbers, single letters, floor/direction qualifiers) so house_20 /
@@ -1669,7 +1711,9 @@ a.brand { text-decoration: none; color: inherit; }
 a.gear { text-decoration: none; color: var(--muted); font-size: 18px; padding: 2px 6px; }
 a.gear:hover { color: var(--fg); }
 .desc { color: var(--muted); font-style: italic; margin: 6px 0 2px; }
-.stats { color: var(--muted); font-size: 13px; margin: 2px 0 4px; }
+.stats { color: var(--fg); font-size: 14px; margin: 4px 0 6px; }
+.stats .atk { color: var(--green); font-weight: 600; cursor: help;
+        text-decoration: underline dotted; text-underline-offset: 3px; }
 details.treebox { margin-top: 10px; }
 details.treebox > summary { cursor: pointer; color: var(--green); font-weight: 600; }
 /* org-chart style tree: boxes connected by right-angle lines that branch/merge */
@@ -2004,6 +2048,17 @@ def _stats_html(idx, ctx, rid):
     dmg = st.get("bashing") or st.get("cutting")
     if dmg:
         bits.append("%s %s" % (h(T(ctx, "melee")), h(dmg)))
+        # melee attack time from the weapon base cost (65 + volume/62.5mL + weight/60g);
+        # range = base/2 (skill 15) .. base (skill 0), before Dex / encumbrance
+        vol, wt = _to_ml(st.get("volume")), _to_g(st.get("weight"))
+        if vol and wt:
+            base = 65 + vol / 62.5 + wt / 60.0
+            bm = base / 2.0
+            bits.append('<span class="atk" title="%s">%s</span>'
+                        % (h(T(ctx, "atk_tip")),
+                           h(T(ctx, "atk_time_fmt", a="%.1f" % (bm / 100.0),
+                              b="%.1f" % (base / 100.0),
+                              m0=int(round(bm)), m1=int(round(base))))))
     if not bits:
         return ""
     return '<div class="stats">%s</div>' % "  ·  ".join(bits)

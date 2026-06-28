@@ -30,7 +30,7 @@ jobs:
 
       - name: Build Recipes exe
         working-directory: CDDA_Recipes
-        run: pyinstaller --onefile --console --name CDDA-Recipes cdda_recipes.py
+        run: pyinstaller --onefile --console --name CDDA-Recipes run_recipes.py
 
       - name: Attach exes to Release
         uses: softprops/action-gh-release@v2

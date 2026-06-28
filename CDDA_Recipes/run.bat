@@ -3,9 +3,9 @@ cd /d "%~dp0"
 title CDDA Recipe Helper
 where py >nul 2>nul
 if %errorlevel%==0 goto usepy
-python cdda_recipes.py
+python -m cdda_recipes
 goto done
 :usepy
-py cdda_recipes.py
+py -m cdda_recipes
 :done
 if errorlevel 1 pause

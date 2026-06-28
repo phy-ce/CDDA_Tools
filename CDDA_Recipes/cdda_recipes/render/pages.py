@@ -7,7 +7,8 @@ from ..htmlutil import (h, a_group, a_item, a_monster, item_url, flag_url,
                         monster_url, skill_url, quality_url, entity_url, pct_html,
                         _more_chips, _more_list)
 from ..assets import page
-from .common import _item_level, raw_fields_html, picture_html, tile_html
+from .common import (_item_level, raw_fields_html, picture_html, tile_html,
+                     _resolved)
 
 _MON_SHOWN = {
     "hp", "speed", "diff", "weight", "volume", "material", "symbol", "color",
@@ -121,20 +122,50 @@ def render_loot(ctx):
 
 
 
-def _browse_page(ctx, nav_key, pairs):
-    """A browse landing: a sorted, clickable chip list of every entity of a kind."""
-    chips = ['<a class="chip" href="%s">%s</a>' % (href, h(label)) for label, href in pairs]
-    body = ('<h1 class="item">%s · %d</h1>%s'
-            % (h(T(ctx, nav_key)), len(pairs), _more_chips(chips, 150)))
+def _browse_page(ctx, nav_key, pairs=None, groups=None):
+    """A browse landing with a live filter box; optionally split into labelled
+    groups. `pairs`/each group = [(label, href), ...]."""
+    if groups is None:
+        groups = [("", pairs or [])]
+    total = sum(len(gp) for _l, gp in groups)
+    blocks = []
+    for label, gp in groups:
+        if not gp:
+            continue
+        chips = "".join('<a class="chip" href="%s">%s</a>' % (href, h(lab))
+                        for lab, href in gp)
+        head = ('<div class="section">%s · %d</div>' % (h(label), len(gp))) if label else ""
+        blocks.append('<div class="bgroup">%s<div class="chips">%s</div></div>'
+                      % (head, chips))
+    body = ('<h1 class="item">%s · %d</h1>'
+            '<input class="bfilter" placeholder="%s" autocomplete="off">%s'
+            % (h(T(ctx, nav_key)), total, h(T(ctx, "filter_ph")), "".join(blocks)))
     return page(T(ctx, nav_key), body, ctx, nav=nav_key.replace("nav_", "", 1))
+
+
+def _grouped(idx, ctx, ids, label_fn, url_fn):
+    """Group ids by label_fn(eid); returns [(label, sorted pairs)] big-first."""
+    groups = {}
+    for eid in ids:
+        groups.setdefault(label_fn(eid), []).append((idx.name(eid), url_fn(eid, ctx)))
+    out = [(lab, sorted(gp, key=lambda x: x[0].lower())) for lab, gp in groups.items()]
+    out.sort(key=lambda g: (-len(g[1]), g[0].lower()))
+    return out
 
 
 def render_monsters_list(ctx):
     idx = get_index(ctx["ver"], ctx["mods"])
     idx.tr = get_translator(ctx["ver"], ctx["lang"])
-    pairs = sorted(((idx.name(m), monster_url(m, ctx)) for _n, m in idx.all_monsters()),
-                   key=lambda x: x[0].lower())
-    return _browse_page(ctx, "nav_monsters", pairs)
+
+    def species(mid):
+        sp = _resolved(idx, mid).get("species")
+        if isinstance(sp, list) and sp:
+            return str(sp[0])
+        if isinstance(sp, str):
+            return sp
+        return T(ctx, "m_other")
+    groups = _grouped(idx, ctx, idx.by_type.get("MONSTER", []), species, monster_url)
+    return _browse_page(ctx, "nav_monsters", groups=groups)
 
 
 def render_skills_list(ctx):
@@ -166,7 +197,18 @@ def render_entity_list(ctx, route):
     idx = get_index(ctx["ver"], ctx["mods"])
     idx.tr = get_translator(ctx["ver"], ctx["lang"])
     typ, nav_key = BROWSE_BY_ROUTE[route]
-    pairs = sorted(((idx.name(i), entity_url(i, ctx)) for i in idx.by_type.get(typ, [])),
+    ids = idx.by_type.get(typ, [])
+    if typ == "mutation":
+        def mlabel(eid):
+            e = _resolved(idx, eid)
+            cat = e.get("category")
+            if cat:
+                return str(cat[0] if isinstance(cat, list) else cat)
+            pts = e.get("points", 0) or 0
+            return (T(ctx, "trait_pos") if pts > 0 else
+                    T(ctx, "trait_neg") if pts < 0 else T(ctx, "trait_neu"))
+        return _browse_page(ctx, nav_key, groups=_grouped(idx, ctx, ids, mlabel, entity_url))
+    pairs = sorted(((idx.name(i), entity_url(i, ctx)) for i in ids),
                    key=lambda x: x[0].lower())
     return _browse_page(ctx, nav_key, pairs)
 

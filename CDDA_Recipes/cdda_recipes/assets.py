@@ -61,6 +61,11 @@ ul.ing { margin: 6px 0 0; padding-left: 20px; } ul.ing li { padding: 2px 0; }
 details.foundbox { margin-top: 0; }
 details.foundbox > summary { cursor: pointer; list-style-position: inside; }
 .cat { color: var(--muted); font-size: 13px; }
+.bfilter { width: 100%; max-width: 360px; padding: 8px 12px; margin: 6px 0 12px;
+        border: 1px solid var(--border2); border-radius: 8px; font-size: 14px;
+        background: var(--panel2); color: var(--fg); }
+.bgroup { margin-bottom: 6px; }
+.bgroup .section { margin-top: 14px; }
 .tile { display: inline-block; image-rendering: pixelated; vertical-align: middle;
         background-repeat: no-repeat; zoom: 2; margin: 4px 0 8px;
         border: 1px solid var(--border); border-radius: 4px; }
@@ -282,7 +287,16 @@ def page(title, body, ctx, q="", nav=None):
               "+'</a>':'<span>'+esc(it.label)+'</span>';}).join('');"
               "document.body.appendChild(p);var r=t.getBoundingClientRect();"
               "p.style.left=(window.scrollX+r.left)+'px';"
-              "p.style.top=(window.scrollY+r.bottom+4)+'px';});})();</script>")
+              "p.style.top=(window.scrollY+r.bottom+4)+'px';});})();</script>"
+              # browse-page live filter: narrow the chip list as you type
+              "<script>(function(){var f=document.querySelector('.bfilter');"
+              "if(!f)return;f.addEventListener('input',function(){"
+              "var q=f.value.trim().toLowerCase();"
+              "document.querySelectorAll('.bgroup').forEach(function(g){var any=false;"
+              "g.querySelectorAll('.chip').forEach(function(c){"
+              "var m=!q||c.textContent.toLowerCase().indexOf(q)>=0;"
+              "c.style.display=m?'':'none';if(m)any=true;});"
+              "g.style.display=any?'':'none';});});})();</script>")
     # left index/nav; settings live at the bottom of it (not a top-corner gear)
     qsuf = "ver=%d&lang=%s%s" % (ctx["ver"], h(ctx["lang"]), "&mods=1" if ctx["mods"] else "")
 

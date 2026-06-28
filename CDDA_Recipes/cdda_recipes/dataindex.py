@@ -32,6 +32,7 @@ class DataIndex:
         self._ent_built = False
         self.flag_info = {}      # flag id -> info text (json_flag)
         self.action_names = {}   # item_action id -> readable name
+        self.ascii_art = {}      # ascii_art id -> picture (list of lines)
         self.item_ids = []       # ids whose type is a real item (for search)
         self.cat_of = {}         # result id -> recipe category code (e.g. CC_WEAPON)
         self.by_cat = {}         # category code -> [result id, ...]
@@ -86,6 +87,9 @@ class DataIndex:
                 nm = name_str(e.get("name"))
                 if nm:
                     self.action_names[eid] = nm
+            elif t == "ascii_art" and isinstance(eid, str):
+                if isinstance(e.get("picture"), list):
+                    self.ascii_art[eid] = e["picture"]
             elif t == "MONSTER" and e.get("death_drops") is not None:
                 self._monsters.append(e)
             elif t == "mapgen":
@@ -93,7 +97,10 @@ class DataIndex:
             elif t == "palette":
                 self._palettes.append(e)
             if isinstance(eid, str):
-                self.by_id.setdefault(eid, e)
+                # real entities win id collisions over cosmetic ascii_art pictures
+                cur = self.by_id.get(eid)
+                if cur is None or (cur.get("type") == "ascii_art" and t != "ascii_art"):
+                    self.by_id[eid] = e
 
     def _index_recipes(self):
         for r in self.recipes:

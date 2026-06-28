@@ -57,6 +57,18 @@ ul.ing { margin: 6px 0 0; padding-left: 20px; } ul.ing li { padding: 2px 0; }
 .chip.loc:hover { border-color: var(--border2); }
 details.foundbox { margin-top: 0; }
 details.foundbox > summary { cursor: pointer; list-style-position: inside; }
+.cat { color: var(--muted); font-size: 13px; }
+pre.ascii { font: 12px/1.05 ui-monospace, Consolas, monospace; white-space: pre;
+        overflow-x: auto; background: var(--panel); border: 1px solid var(--border);
+        border-radius: 8px; padding: 8px 10px; margin: 8px 0; width: max-content;
+        max-width: 100%; }
+details.rawbox { margin: 14px 0; }
+details.rawbox > summary { cursor: pointer; list-style-position: inside; }
+.rawfields { margin-top: 6px; }
+.rawfields .f { border-bottom: 1px solid var(--border); padding: 3px 0; }
+.rawfields .k { min-width: 170px; font: 12px ui-monospace, Consolas, monospace; }
+.rawfields code { font: 12px ui-monospace, Consolas, monospace; color: var(--fg);
+        word-break: break-word; }
 .results a { display: block; padding: 7px 10px; border-radius: 8px; color: inherit;
              text-decoration: none; }
 .results a:hover { background: var(--hover); }
@@ -270,11 +282,17 @@ def page(title, body, ctx, q="", nav=None):
         cls = "navlink active" if nav == key else "navlink"
         return '<a class="%s" href="%s?%s">%s %s</a>' % (cls, path, qsuf, icon, h(label))
 
-    side = ('<nav class="side">%s%s%s<div class="navspacer"></div>%s</nav>' % (
+    links = "".join([
         nl("items", "/", "📦", T(ctx, "nav_items")),
         nl("loot", "/loot", "🎒", T(ctx, "nav_loot")),
+        nl("monsters", "/monsters", "🧟", T(ctx, "nav_monsters")),
+        nl("skills", "/skills", "🎓", T(ctx, "nav_skills")),
+        nl("qualities", "/qualities", "🛠", T(ctx, "nav_qualities")),
+        nl("flags", "/flags", "🏷", T(ctx, "nav_flags")),
         nl("mechanics", "/mechanics", "📖", T(ctx, "nav_mechanics")),
-        nl("settings", "/settings", "⚙", T(ctx, "settings"))))
+    ])
+    side = ('<nav class="side">%s<div class="navspacer"></div>%s</nav>'
+            % (links, nl("settings", "/settings", "⚙", T(ctx, "settings"))))
     return ("<!doctype html><html><head><meta charset=utf-8>"
             "<meta name=viewport content='width=device-width,initial-scale=1'>"
             "<title>%s</title><style>%s</style></head><body>%s"

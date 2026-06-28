@@ -12,7 +12,8 @@ from .htmlutil import h
 from .render import (render_item, render_group, render_loot, render_mechanics,
                      suggest_json, render_flag, render_skill, render_quality,
                      render_monster, render_category, render_search,
-                     render_landing, render_settings)
+                     render_landing, render_settings, render_monsters_list,
+                     render_skills_list, render_qualities_list, render_flags_list)
 
 # ---------------------------------------------------------------------------
 # HTTP server
@@ -60,6 +61,14 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(render_group(ctx, first("group")))
             elif u.path == "/loot":
                 self._send(render_loot(ctx))
+            elif u.path == "/monsters":
+                self._send(render_monsters_list(ctx))
+            elif u.path == "/skills":
+                self._send(render_skills_list(ctx))
+            elif u.path == "/qualities":
+                self._send(render_qualities_list(ctx))
+            elif u.path == "/flags":
+                self._send(render_flags_list(ctx))
             elif u.path == "/mechanics":
                 self._send(render_mechanics(ctx))
             elif u.path == "/suggest":

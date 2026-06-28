@@ -1,8 +1,81 @@
 import json
+import re
 
 from ..i18n import T
 from ..htmlutil import (h, a_item, item_url, a_skill, a_quality, flag_url,
                         _to_ml, _to_g)
+
+_META_KEYS = {"type", "id", "abstract", "copy-from", "extend", "delete",
+              "relative", "proportional", "name", "description", "looks_like",
+              "picture", "ascii_picture"}
+
+
+_ASCII_COLORS = {
+    "black": "#3a3f47", "white": "#e6e8eb", "light_gray": "#b8bfc7",
+    "dark_gray": "#7e8893", "red": "#d23a2e", "light_red": "#ff6b5e",
+    "green": "#2b8a3e", "light_green": "#5cc777", "blue": "#3b6fd6",
+    "light_blue": "#6ea8ff", "cyan": "#1797a8", "light_cyan": "#4fd0e0",
+    "magenta": "#b5179e", "light_magenta": "#e85ad0", "brown": "#9a6a23",
+    "yellow": "#d6a400", "pink": "#ff8fc6"}
+
+
+def _ascii_html(lines):
+    out = []
+    for ln in lines:
+        buf = []
+        for p in re.split(r'(<color_[a-z_0-9]+>|</color>)', ln):
+            if p.startswith("<color_"):
+                buf.append('<span style="color:%s">' % _ASCII_COLORS.get(p[7:-1], "inherit"))
+            elif p == "</color>":
+                buf.append("</span>")
+            else:
+                buf.append(h(p))
+        out.append("".join(buf))
+    return '<pre class="ascii">%s</pre>' % "\n".join(out)
+
+
+def picture_html(idx, ctx, eid):
+    """The entity's ASCII-art picture (inline `picture` or an `ascii_picture`
+    reference), rendered with its colors."""
+    res = _resolved(idx, eid)
+    pic = res.get("picture")
+    if not isinstance(pic, list):
+        ref = res.get("ascii_picture")
+        pic = idx.ascii_art.get(ref) if isinstance(ref, str) else None
+    if isinstance(pic, list) and pic:
+        return _ascii_html([x for x in pic if isinstance(x, str)])
+    return ""
+
+
+def _resolved(idx, eid):
+    """Merge an entry with its copy-from ancestors (child overrides parent)."""
+    out = {}
+    for e in reversed(idx._chain(eid)):
+        if isinstance(e, dict):
+            out.update(e)
+    return out
+
+
+def raw_fields_html(idx, ctx, eid, shown, skip_prefixes=("//",)):
+    """Collapsible dump of every resolved JSON field not already shown, so no
+    data is silently omitted."""
+    res = _resolved(idx, eid)
+    skip = set(shown) | _META_KEYS
+    rows = []
+    for k in sorted(res):
+        if k in skip or any(k.startswith(p) for p in skip_prefixes):
+            continue
+        val = json.dumps(res[k], ensure_ascii=False)
+        if len(val) > 240:
+            val = val[:240] + " …"
+        rows.append('<div class="f"><span class="k">%s</span>'
+                    '<span class="v"><code>%s</code></span></div>' % (h(k), h(val)))
+    if not rows:
+        return ""
+    return ('<details class="rawbox"><summary class="section">%s</summary>'
+            '<div class="rawfields">%s</div></details>'
+            % (h(T(ctx, "raw_fields", n=len(rows))), "".join(rows)))
+
 
 def group_html(idx, group, ctx, depth=0):
     alts = []

@@ -68,6 +68,10 @@ def monster_url(mid, ctx):
     return _kv_url("/monster", "id", mid, ctx)
 
 
+def entity_url(eid, ctx):
+    return _kv_url("/entity", "id", eid, ctx)
+
+
 
 def a_skill(idx, skill, ctx):
     return '<a class="item" href="%s">%s</a>' % (skill_url(skill, ctx), h(idx.name(skill)))

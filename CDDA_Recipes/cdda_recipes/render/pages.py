@@ -1,13 +1,13 @@
 from urllib.parse import quote
 
 from ..state import get_index, get_translator
-from ..config import SETTINGS
+from ..config import SETTINGS, BROWSE_BY_ROUTE, BROWSE_BY_TYPE
 from ..i18n import T, CAT_NAMES, cat_name, MECH_DOC
 from ..htmlutil import (h, a_group, a_item, a_monster, item_url, flag_url,
-                        monster_url, skill_url, quality_url, pct_html,
+                        monster_url, skill_url, quality_url, entity_url, pct_html,
                         _more_chips, _more_list)
 from ..assets import page
-from .common import _item_level, raw_fields_html, picture_html
+from .common import _item_level, raw_fields_html, picture_html, tile_html
 
 _MON_SHOWN = {
     "hp", "speed", "diff", "weight", "volume", "material", "symbol", "color",
@@ -161,6 +161,36 @@ def render_flags_list(ctx):
     return _browse_page(ctx, "nav_flags", pairs)
 
 
+def render_entity_list(ctx, route):
+    """Generic browse landing for one of the BROWSE_TYPES."""
+    idx = get_index(ctx["ver"], ctx["mods"])
+    idx.tr = get_translator(ctx["ver"], ctx["lang"])
+    typ, nav_key = BROWSE_BY_ROUTE[route]
+    pairs = sorted(((idx.name(i), entity_url(i, ctx)) for i in idx.by_type.get(typ, [])),
+                   key=lambda x: x[0].lower())
+    return _browse_page(ctx, nav_key, pairs)
+
+
+def render_entity(ctx, eid):
+    """Generic detail page: name + description + ASCII art + every JSON field."""
+    idx = get_index(ctx["ver"], ctx["mods"])
+    idx.tr = get_translator(ctx["ver"], ctx["lang"])
+    e = idx.by_id.get(eid) or {}
+    typ = e.get("type")
+    nav_key = BROWSE_BY_TYPE.get(typ, ("",))[0]
+    nav = nav_key.replace("nav_", "", 1) if nav_key else None
+    name = idx.name(eid)
+    parts = ['<div class="idtag">%s</div><h1 class="item">%s</h1><div class="idtag">%s</div>'
+             % (h(T(ctx, nav_key) if nav_key else (typ or "")), h(name), h(eid))]
+    parts.append(tile_html(idx, ctx, eid))
+    d = idx.desc(eid)
+    if d:
+        parts.append('<div class="desc">%s</div>' % h(d))
+    parts.append(picture_html(idx, ctx, eid))
+    parts.append(raw_fields_html(idx, ctx, eid, set()))
+    return page("%s — CDDA Recipes" % name, "".join(parts), ctx, nav=nav)
+
+
 def render_mechanics(ctx):
     doc = MECH_DOC.get(ctx["lang"]) or MECH_DOC["en"]
     secs = "".join("<h2>%s</h2>%s" % (h(head), body) for head, body in doc)
@@ -294,6 +324,7 @@ def render_monster(ctx, mid):
     name = idx.name(mid)
     parts = ['<div class="idtag">%s</div><h1 class="item">%s</h1><div class="idtag">%s</div>'
              % (h(T(ctx, "monster_single")), h(name), h(mid))]
+    parts.append(tile_html(idx, ctx, mid))
     d = idx.desc(mid)
     if d:
         parts.append('<div class="desc">%s</div>' % h(d))
@@ -335,7 +366,8 @@ def render_monster(ctx, mid):
         bits.append("%s %s" % (h(T(ctx, "material")),
                                ", ".join(h(idx.name(m)) for m in mats if m)))
     if bits:
-        parts.append('<div class="stats">%s</div>' % "  ·  ".join(bits))
+        parts.append('<div class="stats">%s</div>'
+                     % "".join('<span class="pill">%s</span>' % b for b in bits))
 
     # combat (offense)
     rows = []

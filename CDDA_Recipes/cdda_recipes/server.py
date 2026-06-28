@@ -1,3 +1,4 @@
+import os
 import socket
 import threading
 import webbrowser
@@ -13,7 +14,9 @@ from .render import (render_item, render_group, render_loot, render_mechanics,
                      suggest_json, render_flag, render_skill, render_quality,
                      render_monster, render_category, render_search,
                      render_landing, render_settings, render_monsters_list,
-                     render_skills_list, render_qualities_list, render_flags_list)
+                     render_skills_list, render_qualities_list, render_flags_list,
+                     render_entity, render_entity_list)
+from .config import BROWSE_BY_ROUTE
 
 # ---------------------------------------------------------------------------
 # HTTP server
@@ -45,6 +48,28 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _serve_gfx(self, ctx, fn):
+        if not fn or any(c in fn for c in ("/", "\\", "..")):
+            return self._send("bad request", 400)
+        ts = state.get_index(ctx["ver"], False).tileset()
+        if not ts:
+            return self._send("no tileset", 404)
+        path = os.path.join(ts["dir"], fn)
+        if not (os.path.isfile(path) and
+                os.path.abspath(path).startswith(os.path.abspath(ts["dir"]))):
+            return self._send("not found", 404)
+        try:
+            with open(path, "rb") as f:
+                data = f.read()
+        except Exception:
+            return self._send("error", 500)
+        self.send_response(200)
+        self.send_header("Content-Type", "image/png")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "public, max-age=86400")
+        self.end_headers()
+        self.wfile.write(data)
+
     def do_GET(self):
         u = urlparse(self.path)
         qs = parse_qs(u.query)
@@ -69,11 +94,17 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(render_qualities_list(ctx))
             elif u.path == "/flags":
                 self._send(render_flags_list(ctx))
+            elif u.path in BROWSE_BY_ROUTE:
+                self._send(render_entity_list(ctx, u.path))
+            elif u.path == "/entity" and first("id"):
+                self._send(render_entity(ctx, first("id")))
             elif u.path == "/mechanics":
                 self._send(render_mechanics(ctx))
             elif u.path == "/suggest":
                 self._send(suggest_json(ctx, first("q")),
                            content_type="application/json; charset=utf-8")
+            elif u.path == "/gfx":
+                self._serve_gfx(ctx, first("f"))
             elif u.path == "/flag" and first("flag"):
                 self._send(render_flag(ctx, first("flag")))
             elif u.path == "/skill" and first("id"):

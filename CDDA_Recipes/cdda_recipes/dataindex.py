@@ -33,6 +33,10 @@ class DataIndex:
         self.flag_info = {}      # flag id -> info text (json_flag)
         self.action_names = {}   # item_action id -> readable name
         self.ascii_art = {}      # ascii_art id -> picture (list of lines)
+        self.by_type = {}        # json type -> [entity id, ...] (for browse)
+        self.gfx_dir = ""        # install's gfx folder (set by get_index)
+        self._tileset = None     # parsed active tileset (lazy)
+        self._tileset_built = False
         self.item_ids = []       # ids whose type is a real item (for search)
         self.cat_of = {}         # result id -> recipe category code (e.g. CC_WEAPON)
         self.by_cat = {}         # category code -> [result id, ...]
@@ -120,6 +124,9 @@ class DataIndex:
             self.by_cat.setdefault(cat, []).append(res)
         self.item_ids = [eid for eid, e in self.by_id.items()
                          if isinstance(e, dict) and e.get("type") in ITEM_TYPES]
+        for eid, e in self.by_id.items():
+            if isinstance(e, dict):
+                self.by_type.setdefault(e.get("type"), []).append(eid)
         for src, entries in self.uncrafts.items():       # reverse: yield -> source
             for un in entries:
                 for group in (un.get("components") or []):
@@ -570,6 +577,24 @@ class DataIndex:
         if not info:
             return None
         return self.tr(re.sub(r"<[^>]+>", "", info)).strip()
+
+    def tileset(self):
+        if not self._tileset_built:
+            self._tileset_built = True
+            from . import tiles
+            self._tileset = tiles.build_tileset(self.gfx_dir)
+        return self._tileset
+
+    def tile_of(self, eid):
+        """(file_rel, x, y, w, h) sprite for an id in the active tileset, or None."""
+        ts = self.tileset()
+        if not ts:
+            return None
+        s = ts["id2s"].get(eid)
+        if s is None:
+            return None
+        from . import tiles
+        return tiles.sprite_pos(ts, s)
 
     def _build_item_indexes(self):
         """One pass over items to build reverse flag / quality / book-skill maps."""

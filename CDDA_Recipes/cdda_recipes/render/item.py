@@ -4,7 +4,7 @@ from ..htmlutil import (h, a_skill, a_monster, a_group, item_url, pct_html,
                         _more_chips)
 from ..assets import page
 from .common import (_stats_html, _abilities_html, recipe_html, group_html,
-                     _resolved, raw_fields_html, picture_html)
+                     _resolved, raw_fields_html, picture_html, tile_html)
 
 # item fields already surfaced by the curated sections above (everything else
 # lands in the "all JSON fields" box so nothing is omitted)
@@ -31,6 +31,7 @@ def render_item(ctx):
     if cat:
         parts[-1] = parts[-1][:-len('</div>')] + (
             ' · <span class="cat">%s %s</span></div>' % (h(T(ctx, "category")), h(cat)))
+    parts.append(tile_html(idx, ctx, rid))
     desc = idx.desc(rid)
     if desc:
         parts.append('<div class="desc">%s</div>' % h(desc))

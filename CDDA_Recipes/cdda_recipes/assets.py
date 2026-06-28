@@ -1,6 +1,7 @@
 from . import state
 from .i18n import LOCALE_NAMES, T
 from .htmlutil import h
+from .config import BROWSE_TYPES
 
 PAGE_CSS = """
 /* one palette, two themes — every colour is a variable so light AND dark
@@ -36,10 +37,11 @@ h1.item { font-size: 22px; margin: 0 0 2px; }
 .idtag { font: 12px ui-monospace, Consolas, monospace; color: var(--faint); }
 .recipe { background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
           padding: 12px 14px; margin: 14px 0; }
-.rtitle { font-weight: 700; color: var(--red); margin-bottom: 8px; }
-.f { display: flex; gap: 8px; padding: 2px 0; }
-.f .k { color: var(--muted); min-width: 110px; flex: none; font-size: 13px; padding-top:1px; }
-.f .v { flex: 1; }
+.rtitle { font-weight: 700; color: var(--red); margin-bottom: 10px; font-size: 15px; }
+.f { display: flex; gap: 12px; padding: 3px 0; align-items: baseline; }
+.f .k { color: var(--muted); min-width: 132px; flex: none; font-size: 13px;
+        text-align: right; }
+.f .v { flex: 1; min-width: 0; }
 .diff { color: var(--faint); font-size:12px; } .semi{ color: var(--faint); } .amp{ color: var(--faint); }
 .or { font-size: 11px; color: var(--pill-fg); background: var(--pill-bg); border-radius: 4px;
       padding: 0 5px; margin: 0 2px; vertical-align: 1px; }
@@ -48,7 +50,8 @@ a.item { color: var(--link); text-decoration: none; }
 a.item:hover { text-decoration: underline; }
 ul.ing { margin: 6px 0 0; padding-left: 20px; } ul.ing li { padding: 2px 0; }
 .muted { color: var(--faint); }
-.section { margin-top: 18px; font-weight: 600; }
+.section { margin: 20px 0 8px; font-weight: 700; font-size: 13.5px; color: var(--fg);
+        border-bottom: 1px solid var(--border); padding-bottom: 5px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .chip { background: var(--panel); border: 1px solid var(--border2); border-radius: 999px;
         padding: 3px 11px; font-size: 13px; text-decoration: none; color: var(--link); }
@@ -58,6 +61,9 @@ ul.ing { margin: 6px 0 0; padding-left: 20px; } ul.ing li { padding: 2px 0; }
 details.foundbox { margin-top: 0; }
 details.foundbox > summary { cursor: pointer; list-style-position: inside; }
 .cat { color: var(--muted); font-size: 13px; }
+.tile { display: inline-block; image-rendering: pixelated; vertical-align: middle;
+        background-repeat: no-repeat; zoom: 2; margin: 4px 0 8px;
+        border: 1px solid var(--border); border-radius: 4px; }
 pre.ascii { font: 12px/1.05 ui-monospace, Consolas, monospace; white-space: pre;
         overflow-x: auto; background: var(--panel); border: 1px solid var(--border);
         border-radius: 8px; padding: 8px 10px; margin: 8px 0; width: max-content;
@@ -78,7 +84,9 @@ a.brand { text-decoration: none; color: inherit; }
 a.gear { text-decoration: none; color: var(--muted); font-size: 18px; padding: 2px 6px; }
 a.gear:hover { color: var(--fg); }
 .desc { color: var(--muted); font-style: italic; margin: 6px 0 2px; }
-.stats { color: var(--fg); font-size: 14px; margin: 4px 0 6px; }
+.stats { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0 12px; }
+.pill { background: var(--hover); border: 1px solid var(--border); border-radius: 999px;
+        padding: 3px 11px; font-size: 13px; white-space: nowrap; color: var(--fg); }
 .stats .atk { color: var(--green); font-weight: 600; cursor: help;
         text-decoration: underline dotted; text-underline-offset: 3px; }
 details.treebox { margin-top: 10px; }
@@ -282,15 +290,18 @@ def page(title, body, ctx, q="", nav=None):
         cls = "navlink active" if nav == key else "navlink"
         return '<a class="%s" href="%s?%s">%s %s</a>' % (cls, path, qsuf, icon, h(label))
 
-    links = "".join([
+    base = [
         nl("items", "/", "📦", T(ctx, "nav_items")),
         nl("loot", "/loot", "🎒", T(ctx, "nav_loot")),
         nl("monsters", "/monsters", "🧟", T(ctx, "nav_monsters")),
         nl("skills", "/skills", "🎓", T(ctx, "nav_skills")),
         nl("qualities", "/qualities", "🛠", T(ctx, "nav_qualities")),
         nl("flags", "/flags", "🏷", T(ctx, "nav_flags")),
-        nl("mechanics", "/mechanics", "📖", T(ctx, "nav_mechanics")),
-    ])
+    ]
+    base += [nl(route.lstrip("/"), route, icon, T(ctx, nav_key))
+             for (typ, nav_key, icon, route) in BROWSE_TYPES]
+    base.append(nl("mechanics", "/mechanics", "📖", T(ctx, "nav_mechanics")))
+    links = "".join(base)
     side = ('<nav class="side">%s<div class="navspacer"></div>%s</nav>'
             % (links, nl("settings", "/settings", "⚙", T(ctx, "settings"))))
     return ("<!doctype html><html><head><meta charset=utf-8>"

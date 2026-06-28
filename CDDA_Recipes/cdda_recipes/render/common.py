@@ -34,6 +34,18 @@ def _ascii_html(lines):
     return '<pre class="ascii">%s</pre>' % "\n".join(out)
 
 
+def tile_html(idx, ctx, eid):
+    """A CSS-cropped sprite from the active tileset, or '' if the id has none."""
+    t = idx.tile_of(eid)
+    if not t:
+        return ""
+    fn, x, y, w, h_ = t
+    url = "/gfx?f=%s&ver=%d" % (fn, ctx["ver"])
+    return ('<span class="tile" title="%s" style="width:%dpx;height:%dpx;'
+            'background-image:url(%s);background-position:-%dpx -%dpx"></span>'
+            % (h(fn), w, h_, h(url), x, y))
+
+
 def picture_html(idx, ctx, eid):
     """The entity's ASCII-art picture (inline `picture` or an `ascii_picture`
     reference), rendered with its colors."""
@@ -285,7 +297,8 @@ def _stats_html(idx, ctx, rid):
                               m0=int(round(bm)), m1=int(round(base))))))
     if not bits:
         return ""
-    return '<div class="stats">%s</div>' % "  ·  ".join(bits)
+    return ('<div class="stats">%s</div>'
+            % "".join('<span class="pill">%s</span>' % b for b in bits))
 
 
 

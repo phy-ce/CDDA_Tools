@@ -3,7 +3,8 @@ import json
 from ..state import get_index, get_translator
 from ..i18n import T
 from ..htmlutil import (h, item_url, group_url, skill_url, quality_url,
-                        flag_url, monster_url)
+                        flag_url, monster_url, entity_url)
+from ..config import BROWSE_TYPES
 from ..assets import page
 
 def _result_section(label, total, links, ctx):
@@ -78,6 +79,12 @@ def search_categories(idx, ctx, q):
             for lab, mid in idx.all_monsters()
             for r in (_rank(q, lab, idx.raw_name(mid), mid),) if r is not None]
     add("monster_single", rows)
+
+    for typ, nav_key, _icon, _route in BROWSE_TYPES:
+        rows = [(r, idx.name(eid), entity_url(eid, ctx))
+                for eid in idx.by_type.get(typ, [])
+                for r in (_rank(q, idx.name(eid), idx.raw_name(eid), eid),) if r is not None]
+        add(nav_key, rows)
     return cats
 
 

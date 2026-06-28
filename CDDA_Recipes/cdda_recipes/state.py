@@ -34,6 +34,8 @@ def get_index(ver, mods):
                 dirs.append(inst["mods_dir"])
             idx = DataIndex()
             idx.load(dirs)
+            idx.gfx_dir = os.path.join(
+                os.path.dirname(os.path.dirname(inst["json_dir"])), "gfx")
             _index_cache[key] = idx
         return idx
 

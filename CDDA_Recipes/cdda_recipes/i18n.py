@@ -36,6 +36,13 @@ UI_STRINGS = {
         "nav_items": "Items", "nav_loot": "Loot sources", "nav_mechanics": "Mechanics",
         "nav_monsters": "Monsters", "nav_skills": "Skills", "nav_qualities": "Tool qualities",
         "nav_flags": "Flags",
+        "nav_mutations": "Mutations", "nav_bionics": "Bionics",
+        "nav_professions": "Professions", "nav_martial": "Martial arts",
+        "nav_techniques": "Techniques", "nav_effects": "Effects",
+        "nav_spells": "Spells", "nav_vehicles": "Vehicles",
+        "nav_vparts": "Vehicle parts", "nav_constructions": "Constructions",
+        "nav_terrain": "Terrain", "nav_furniture": "Furniture",
+        "nav_materials": "Materials",
         "loot_title": "Loot sources",
         "loot_hint": "Top-level loot groups — the entry points where loot actually "
             "spawns on the map. Click one to drill into its sub-groups and items "
@@ -112,6 +119,13 @@ UI_STRINGS = {
         "nav_items": "아이템", "nav_loot": "입수처", "nav_mechanics": "메커니즘",
         "nav_monsters": "몬스터", "nav_skills": "스킬", "nav_qualities": "도구 품질",
         "nav_flags": "특성(플래그)",
+        "nav_mutations": "변이", "nav_bionics": "바이오닉",
+        "nav_professions": "직업", "nav_martial": "무술",
+        "nav_techniques": "기술", "nav_effects": "효과",
+        "nav_spells": "주문", "nav_vehicles": "차량",
+        "nav_vparts": "차량 부품", "nav_constructions": "건설",
+        "nav_terrain": "지형", "nav_furniture": "가구",
+        "nav_materials": "재질",
         "loot_title": "입수처",
         "loot_hint": "최상위 루트 그룹 — 맵에서 전리품이 실제로 생성되는 입수처입니다. "
             "클릭하면 하위 그룹과 아이템(각각의 생성 확률 포함)으로 타고 내려갑니다. "
@@ -186,6 +200,13 @@ UI_STRINGS = {
         "nav_items": "アイテム", "nav_loot": "入手元", "nav_mechanics": "仕組み",
         "nav_monsters": "モンスター", "nav_skills": "スキル", "nav_qualities": "道具品質",
         "nav_flags": "フラグ",
+        "nav_mutations": "変異", "nav_bionics": "バイオニック",
+        "nav_professions": "職業", "nav_martial": "武術",
+        "nav_techniques": "技", "nav_effects": "効果",
+        "nav_spells": "呪文", "nav_vehicles": "車両",
+        "nav_vparts": "車両部品", "nav_constructions": "建設",
+        "nav_terrain": "地形", "nav_furniture": "家具",
+        "nav_materials": "材質",
         "loot_title": "入手元",
         "loot_hint": "最上位のルートグループ — マップで戦利品が実際に生成される入手元です。"
             "クリックすると下位グループやアイテム（各生成確率つき）へ辿れます。"

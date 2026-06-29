@@ -12,10 +12,11 @@ from .installs import find_installs
 from .htmlutil import h
 from .render import (render_item, render_group, render_loot, render_mechanics,
                      suggest_json, render_flag, render_skill, render_quality,
-                     render_monster, render_category, render_search,
+                     render_monster, render_search,
                      render_landing, render_settings, render_monsters_list,
                      render_skills_list, render_qualities_list, render_flags_list,
-                     render_entity, render_entity_list)
+                     render_entity, render_entity_list, render_items_table,
+                     render_sim)
 from .config import BROWSE_BY_ROUTE
 
 # ---------------------------------------------------------------------------
@@ -86,6 +87,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(render_group(ctx, first("group")))
             elif u.path == "/loot":
                 self._send(render_loot(ctx))
+            elif u.path == "/items":
+                self._send(render_items_table(ctx, first("cat"), first("qual")))
             elif u.path == "/monsters":
                 self._send(render_monsters_list(ctx))
             elif u.path == "/skills":
@@ -99,7 +102,9 @@ class Handler(BaseHTTPRequestHandler):
             elif u.path == "/entity" and first("id"):
                 self._send(render_entity(ctx, first("id")))
             elif u.path == "/mechanics":
-                self._send(render_mechanics(ctx))
+                self._send(render_mechanics(ctx, first("topic")))
+            elif u.path == "/sim":
+                self._send(render_sim(ctx, qs))
             elif u.path == "/suggest":
                 self._send(suggest_json(ctx, first("q")),
                            content_type="application/json; charset=utf-8")
@@ -118,10 +123,6 @@ class Handler(BaseHTTPRequestHandler):
                 if saved:                       # checkbox absent => unchecked
                     SETTINGS["npc_loot"] = first("npc_loot") in ("1", "true", "on")
                 self._send(render_settings(ctx, saved))
-            elif first("cat"):
-                maxlv = first("maxlv")
-                maxlv = int(maxlv) if maxlv.isdigit() else None
-                self._send(render_category(ctx, first("cat"), first("skill"), maxlv))
             elif first("q"):
                 self._send(render_search(ctx, first("q")))
             else:

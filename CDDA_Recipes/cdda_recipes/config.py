@@ -19,6 +19,17 @@ ITEM_TYPES = {"GENERIC", "COMESTIBLE", "ARMOR", "TOOL", "TOOL_ARMOR", "TOOLMOD",
 
 
 
+# the game auto-assigns an item_category by item "type" when none is set in JSON.
+# Used to classify every item (explicit `category` wins) for browsing.
+TYPE_CAT = {"GUN": "guns", "GUNMOD": "mods", "MAGAZINE": "magazines", "AMMO": "ammo",
+            "TOOL": "tools", "TOOL_ARMOR": "clothing", "ARMOR": "clothing",
+            "COMESTIBLE": "food", "BOOK": "books", "BIONIC_ITEM": "bionics",
+            "PET_ARMOR": "clothing", "BATTERY": "tools", "ENGINE": "veh_parts",
+            "WHEEL": "veh_parts", "CONTAINER": "container", "TOOLMOD": "tools",
+            "GENERIC": "other"}
+
+
+
 # extra entity types browsable from the sidebar, each via the generic entity
 # page (name + description + ASCII art + all JSON fields):
 # (json "type", nav-string key, sidebar icon, list route)

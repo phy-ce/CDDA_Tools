@@ -34,6 +34,24 @@ documentation — **not** on assumptions or memory.
 When unsure how a CDDA feature works, read the relevant file under `doc/` first,
 then confirm against `data/`, before writing code.
 
+## Combat math: the game's C++ source
+
+Combat formulas (melee/ranged hit, damage, crit, dispersion, armor) live in the
+**engine C++**, not in `data/json` or `doc/`. When touching them:
+
+- Read the actual source of the matching fork — the install is usually CDBN, so
+  `cataclysmbn/Cataclysm-BN/src/`: `melee.cpp`, `ranged.cpp`, `ballistics.cpp`,
+  `creature.cpp`, `character.cpp`, `monster.cpp`, `damage.cpp`, `rng.cpp`,
+  `game_constants.h`.
+- **Pin to the build's commit:** the install's `VERSION.txt` holds the `commit
+  sha`; fetch raw files at that sha so the math matches the user's exact version.
+- A transcribed, `file:line`-referenced summary lives in
+  `CDDA_Recipes/docs/combat-formulas.md` — update it when you re-derive anything.
+- **Known engine quirk:** melee `melee_hit_range` rolls
+  `normal_roll(acc·5, accuracy_roll_stddev²)` — i.e. **stddev 25** — while the
+  `hit_chance` estimator assumes stddev 5. The real melee hit chance is
+  `Φ((hit−dodge)/5)`; `hit_chance` is AI/estimate-only.
+
 ## Third-party references
 
 This repo is MIT; some other Cataclysm tools (e.g. the `cdda-guide` / `cbn-guide`
@@ -89,12 +107,40 @@ note this in commits or comments — just keep the code original.
   (`ko`), Japanese (`ja`)** — keep all three in sync. (CDDA_Installer is `ko`/`en`
   only.) Game content (names/descriptions) is localized from the install's
   gettext `lang/mo/*.mo`.
+- **Use the game's official translation for any label that names an in-game term**
+  (stats, damage types, attributes, etc.) — do **not** invent your own wording.
+  Look the term up in the install's `lang/mo/<lang>/LC_MESSAGES/*.mo` (load with
+  Python `gettext`, e.g. `Bash:`→타격 피해, `Cut`→베기, `Encumbrance`→방해도,
+  `Warmth`→보온력, `Range`→사정거리, `Dispersion`→분산도, `Quench`→갈증 해소,
+  `Strength`→체력, `Dexterity`→민첩성, `Moves`→행동력). Only fall back to your own
+  term when the `.mo` has no entry for it. This applies to every language and to
+  doc/prose, not just column headers.
 - Reads `data/json` (optionally `data/mods`) from the `~/Games/Cataclysm-DDA|BN`
   installs, following `copy-from` inheritance and expanding `requirement`/`LIST`.
 - **No silent data loss:** entity pages show curated sections plus a generic
   "all JSON fields" box (`raw_fields_html`) for everything else. Adding a
   browsable entity type is one line in `config.BROWSE_TYPES` (drives the generic
   `render_entity` page, a sidebar section, and search).
+- **Items browsing:** the landing (`/`) is a grid of in-game **`item_category`**
+  cards (fine-grained), each opening `/items?cat=<id>` — a single sortable,
+  filterable table (`render_items_table`: client-side column sort + name filter +
+  category/quality selects). An item's category = its explicit `category`
+  (resolved via copy-from) else `config.TYPE_CAT` by type; built lazily by
+  `DataIndex.item_category()` / `item_categories()`. Type-specific stat columns
+  (armor / food / gun) follow the category's dominant item type. There is no
+  separate "item table" page — this *is* the merged Items view.
+- **Mechanics (`/mechanics`)** is topic-based: a topic grid, then one topic via
+  `?topic=<id>`. `MECH_TOPICS` (order + 3-lang titles), `MECH_DOC` (the "basics"
+  topic), `COMBAT_DOC` (combat topics), resolved by `mech_sections()`. Combat-topic
+  **bodies are `en`+`ko` only and `ja` falls back to `en`** (titles stay 3-lang) —
+  the one allowed exception to "keep all three in sync"; formula `<pre>` blocks are
+  shared, language-neutral constants.
+- **Combat simulator (`/sim`, `render/sim.py`)** Monte-Carlo replays the formulas
+  from `docs/combat-formulas.md` (melee + ranged modes). It is a pure calculator;
+  it only reads the index to power the weapon / monster / gun / ammo **search
+  pickers** — `<datalist>` comboboxes that resolve a typed name → id. Cache id
+  lists per index, but resolve names per request so pickers follow the UI language
+  (don't cache localized names).
 - **id collisions:** different json types can share an id (e.g. an `ascii_art`
   picture named after an item). In `by_id`, a real entity must win over an
   `ascii_art`; standalone art lives in `idx.ascii_art`.

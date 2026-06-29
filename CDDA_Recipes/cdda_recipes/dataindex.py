@@ -2,7 +2,7 @@ import os
 import re
 import json
 
-from .config import ITEM_TYPES, SETTINGS
+from .config import ITEM_TYPES, SETTINGS, TYPE_CAT
 from .installs import name_str
 from .loot import group_loot, _chance_ic, _or_ic, _repeat_ic, _loc_base
 
@@ -40,6 +40,8 @@ class DataIndex:
         self.item_ids = []       # ids whose type is a real item (for search)
         self.cat_of = {}         # result id -> recipe category code (e.g. CC_WEAPON)
         self.by_cat = {}         # category code -> [result id, ...]
+        self.by_itemcat = {}     # item_category id -> [item id, ...] (lazy)
+        self._itemcat_built = False
         self.item_groups_of = {}  # item id -> set(group id) it appears in (direct)
         self.group_parents = {}   # child group id -> set(parent group id)
         self.group_items = {}     # group id -> set(item id) it can spawn (direct)
@@ -462,6 +464,24 @@ class DataIndex:
 
     def item_pairs(self):           # unsorted (name, id), for search
         return [(self.name(i), i) for i in self.item_ids]
+
+    def item_category(self, iid):
+        """An item's in-game item_category id: its explicit `category` (inherited
+        via copy-from), else the engine default for its type."""
+        for e in self._chain(iid):
+            c = e.get("category")
+            if isinstance(c, str):
+                return c
+        e = self.by_id.get(iid) or {}
+        return TYPE_CAT.get(e.get("type"), "other")
+
+    def item_categories(self):
+        """Lazy {item_category id -> [item id, ...]} over every real item."""
+        if not self._itemcat_built:
+            for iid in self.item_ids:
+                self.by_itemcat.setdefault(self.item_category(iid), []).append(iid)
+            self._itemcat_built = True
+        return self.by_itemcat
 
     def _build_entities(self):
         if self._ent_built:

@@ -138,7 +138,16 @@ table.cat { border-collapse: collapse; width: 100%; margin-top: 12px; }
 table.cat th, table.cat td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); }
 table.cat th { color: var(--muted); font-weight: 600; font-size: 13px; }
 table.cat td.lv, table.cat th.lv { text-align: right; color: var(--muted); width: 4em; }
-table.cat tr:hover td { background: var(--hover); }
+table.cat td.num, table.cat th.num { text-align: right; white-space: nowrap; }
+table.cat tbody tr:hover td { background: var(--hover); }
+/* sortable item table: clickable headers + horizontal scroll on overflow */
+.tablewrap { overflow-x: auto; margin-top: 12px; }
+table.sortable th { cursor: pointer; user-select: none; white-space: nowrap;
+        position: sticky; top: 53px; background: var(--panel); z-index: 1; }
+table.sortable th:hover { color: var(--link); }
+table.sortable th .ar { color: var(--link); font-size: 11px; margin-left: 2px; }
+.tfilter { padding: 5px 10px; border: 1px solid var(--border2); border-radius: 7px;
+        background: var(--panel2); color: var(--fg); min-width: 180px; }
 .filters { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
 .filters select, .filters input { padding: 5px 8px; border: 1px solid var(--border2);
         border-radius: 7px; background: var(--panel2); color: var(--fg); }
@@ -150,7 +159,7 @@ table.cat tr:hover td { background: var(--hover); }
 .layout > .wrap { flex: 1; min-width: 0; max-width: 920px; margin: 18px auto; }
 .side { position: sticky; top: 53px; align-self: flex-start; width: 184px; flex: none;
         display: flex; flex-direction: column; gap: 2px; padding: 16px 8px;
-        min-height: calc(100vh - 53px); }
+        height: calc(100vh - 53px); overflow-y: auto; }
 .side .navlink { display: block; padding: 8px 12px; border-radius: 8px; font-size: 14px;
         color: var(--fg); text-decoration: none; }
 .side .navlink:hover { background: var(--hover); }
@@ -202,6 +211,43 @@ details.morechips[open] > summary { margin-bottom: 6px; }
 .mech ul { margin: 6px 0; padding-left: 20px; }
 .mech code { background: var(--hover); border-radius: 4px; padding: 0 4px;
         font: 12px ui-monospace, Consolas, monospace; }
+.mech pre.mechcode { background: var(--panel); border: 1px solid var(--border);
+        border-radius: 8px; padding: 10px 12px; margin: 8px 0; overflow-x: auto;
+        font: 12.5px/1.5 ui-monospace, Consolas, monospace; color: var(--fg);
+        white-space: pre; }
+.mech table.mecht { border-collapse: collapse; margin: 10px 0; font-size: 13px; }
+.mech table.mecht th, .mech table.mecht td { border: 1px solid var(--border);
+        padding: 5px 12px; text-align: right; }
+.mech table.mecht th { color: var(--muted); font-weight: 600; background: var(--hover); }
+.mech table.mecht td:first-child, .mech table.mecht th:first-child { text-align: left; }
+/* combat simulator */
+.simform { margin: 12px 0 18px; }
+.simgroup { margin-bottom: 10px; }
+.simgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 8px 12px; margin-top: 8px; }
+.simf { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--muted); }
+.simf input, .simf select { padding: 6px 8px; border: 1px solid var(--border2);
+        border-radius: 7px; background: var(--panel2); color: var(--fg); font-size: 14px; }
+.simf.wide { grid-column: 1 / -1; }
+.simf.wide select, .simf.wide input { max-width: 360px; }
+.simrun { margin-top: 14px; padding: 9px 22px; border: 1px solid var(--link);
+        background: var(--link); color: #fff; border-radius: 8px; font-size: 14px;
+        font-weight: 600; cursor: pointer; }
+.simresults { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 10px; margin: 6px 0 18px; }
+.simstat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+        padding: 12px 14px; text-align: center; }
+.simstat .sv { font-size: 22px; font-weight: 700; color: var(--link); }
+.simstat .sl { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.simstat .ss { font-size: 11px; color: var(--faint); margin-top: 1px; }
+.hist { margin-top: 10px; }
+.hbar { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.hbar .hl { width: 82px; flex: none; font-size: 12px; color: var(--muted); text-align: right;
+        font-variant-numeric: tabular-nums; }
+.hbar .htrack { flex: 1; background: var(--hover); border-radius: 5px; height: 16px; overflow: hidden; }
+.hbar .hfill { display: block; height: 100%; background: var(--link); border-radius: 5px; }
+.hbar .hp { width: 52px; flex: none; font-size: 12px; color: var(--faint); text-align: right;
+        font-variant-numeric: tabular-nums; }
 """
 
 
@@ -296,7 +342,34 @@ def page(title, body, ctx, q="", nav=None):
               "g.querySelectorAll('.chip').forEach(function(c){"
               "var m=!q||c.textContent.toLowerCase().indexOf(q)>=0;"
               "c.style.display=m?'':'none';if(m)any=true;});"
-              "g.style.display=any?'':'none';});});})();</script>")
+              "g.style.display=any?'':'none';});});})();</script>"
+              # sortable tables: click a header to sort its tbody by that column.
+              # numeric cells compare by parseFloat; empty cells always sort last.
+              "<script>(function(){function val(td){var v=td.getAttribute('data-v');"
+              "if(v===null||v==='')return null;var n=parseFloat(v);"
+              "return isNaN(n)?v.toLowerCase():n;}"
+              "document.querySelectorAll('table.sortable').forEach(function(tb){"
+              "if(!tb.tHead||!tb.tBodies.length)return;var ths=tb.tHead.rows[0].cells;"
+              "Array.prototype.forEach.call(ths,function(th,i){"
+              "th.addEventListener('click',function(){var body=tb.tBodies[0];"
+              "var rows=Array.prototype.slice.call(body.rows);"
+              "var asc=th.getAttribute('data-dir')!=='asc';"
+              "Array.prototype.forEach.call(ths,function(o){o.removeAttribute('data-dir');"
+              "var a=o.querySelector('.ar');if(a)a.textContent='';});"
+              "th.setAttribute('data-dir',asc?'asc':'desc');"
+              "rows.sort(function(a,b){var x=val(a.cells[i]),y=val(b.cells[i]);"
+              "if(x===null&&y===null)return 0;if(x===null)return 1;if(y===null)return -1;"
+              "if(x<y)return asc?-1:1;if(x>y)return asc?1:-1;return 0;});"
+              "rows.forEach(function(r){body.appendChild(r);});"
+              "var ar=th.querySelector('.ar');if(ar)ar.textContent=asc?' \\u25b2':' \\u25bc';"
+              "});});});})();</script>"
+              # item-table name filter: hide rows whose first cell doesn't match
+              "<script>(function(){var f=document.querySelector('.tfilter');if(!f)return;"
+              "var tb=document.querySelector('table.sortable tbody');if(!tb)return;"
+              "f.addEventListener('input',function(){var q=f.value.trim().toLowerCase();"
+              "Array.prototype.forEach.call(tb.rows,function(r){"
+              "r.style.display=!q||r.cells[0].textContent.toLowerCase().indexOf(q)>=0?"
+              "'':'none';});});})();</script>")
     # left index/nav; settings live at the bottom of it (not a top-corner gear)
     qsuf = "ver=%d&lang=%s%s" % (ctx["ver"], h(ctx["lang"]), "&mods=1" if ctx["mods"] else "")
 
@@ -315,6 +388,7 @@ def page(title, body, ctx, q="", nav=None):
     base += [nl(route.lstrip("/"), route, icon, T(ctx, nav_key))
              for (typ, nav_key, icon, route) in BROWSE_TYPES]
     base.append(nl("mechanics", "/mechanics", "📖", T(ctx, "nav_mechanics")))
+    base.append(nl("sim", "/sim", "🎯", T(ctx, "sim_nav")))
     links = "".join(base)
     side = ('<nav class="side">%s<div class="navspacer"></div>%s</nav>'
             % (links, nl("settings", "/settings", "⚙", T(ctx, "settings"))))

@@ -26,6 +26,7 @@ UI_STRINGS = {
         "weight": "Weight", "volume": "Volume", "material": "Material", "melee": "Melee",
         "categories": "Categories", "all_skills": "All skills", "max_lv": "Max level",
         "lv": "Lv", "found": "Found in (loot groups)", "all_cats": "← All categories",
+        "all_items": "All items", "cat_any": "All categories",
         "items_n": "{n} items", "item_col": "Item", "browse_hint":
         "Pick a category to browse, or search by name above.",
         "settings": "Settings", "saved": "Saved.",
@@ -94,6 +95,54 @@ UI_STRINGS = {
                     "Dexterity lowers it further; encumbrance and low stamina raise "
                     "it. Floored at 25 moves.\n"
                     "Monsters use a fixed attack_cost instead — see Mechanics."),
+        "nav_table": "Item table", "table_title": "Item table",
+        "table_hint": "Sortable table. A category adds its type's stat columns; "
+            "choose a tool quality, filter by name, and click any column header to sort.",
+        "all_types": "All types", "type_col": "Type", "none_quality": "Tool quality…",
+        "tfilter_ph": "filter by name…",
+        "col_bash": "Bash", "col_cut": "Cut", "col_tohit": "To-hit",
+        "col_enc": "Encumbrance", "col_cov": "Coverage", "col_warmth": "Warmth",
+        "col_thick": "Thickness", "col_cal": "Calories", "col_quench": "Quench",
+        "col_healthy": "Healthy", "col_fun": "Enjoy", "col_range": "Range",
+        "col_disp": "Dispersion", "qual_lv": "{q} Lv",
+        "mech_pick": "Pick a topic to read.", "mech_back": "← All topics",
+        "sim_nav": "Combat sim", "sim_title": "Melee combat simulator",
+        "sim_hint": "Estimate hit chance, damage and time-to-kill from the BN melee "
+                    "formulas. Edit the values and run.",
+        "sim_run": "Run", "sim_attacker": "Attacker", "sim_weapon": "Weapon",
+        "sim_target": "Target", "sim_str": "Strength", "sim_dex": "Dexterity",
+        "sim_per": "Perception", "sim_sk_melee": "Melee skill", "sim_sk_weapon": "Weapon skill",
+        "sim_w_bash": "Bash dmg", "sim_w_cut": "Cut dmg", "sim_w_stab": "Stab dmg",
+        "sim_w_hit": "To-hit", "sim_w_vol": "Volume (mL)", "sim_w_wt": "Weight (g)",
+        "sim_t_dodge": "Dodge", "sim_a_bash": "Armor bash", "sim_a_cut": "Armor cut",
+        "sim_a_stab": "Armor stab", "sim_t_hp": "HP", "sim_size": "Size",
+        "sim_size_tiny": "Tiny", "sim_size_small": "Small", "sim_size_medium": "Medium",
+        "sim_size_large": "Large", "sim_size_huge": "Huge",
+        "sim_hitchance": "Hit chance", "sim_critchance": "Crit (per hit)",
+        "sim_dmg_hit": "Damage / hit", "sim_dmg_swing": "Damage / swing",
+        "sim_movecost": "Attack moves", "sim_dps": "Damage / second",
+        "sim_ttk": "Time to kill", "sim_hit_sub": "to-hit {v}", "sim_atk_sub": "{v} /s",
+        "sim_dist": "Per-swing damage distribution ({n} trials)",
+        "sim_assume": "Assumes full stamina, no encumbrance, two arms, no "
+                      "martial-arts/mutation buffs; two-handed swing bonus not applied. "
+                      "Damage uses the exact bash/cut/stab rolls; hit chance is "
+                      "Φ((hit−dodge)/5) with the real σ=25.",
+        "sim_mode": "Mode", "sim_mode_melee": "Melee", "sim_mode_ranged": "Ranged",
+        "sim_gun": "Gun", "sim_ammo": "Ammo",
+        "sim_pick_weapon": "Pick weapon", "sim_pick_monster": "Pick monster",
+        "sim_pick_gun": "Pick gun", "sim_pick_ammo": "Pick ammo",
+        "sim_pick_custom": "type to search…",
+        "sim_sk_gun": "Gun skill", "sim_gun_disp": "Dispersion (MoA)",
+        "sim_recoil": "Recoil (MoA)", "sim_range": "Range (tiles)",
+        "sim_rng_dmg": "Damage", "sim_rng_pen": "Armor pen",
+        "sim_proj_speed": "Projectile speed", "sim_a_bullet": "Armor bullet",
+        "sim_aimed": "Crit (aimed)", "sim_dmg_shot": "Damage / shot",
+        "sim_avgdisp": "Avg dispersion", "sim_shots_kill": "Shots to kill",
+        "sim_dist_shot": "Per-shot damage distribution ({n} trials)",
+        "sim_assume_r": "Per-shot; ignores aim-time and fire-rate. Assumes torso hits "
+                        "(severity ≤1.5, no headshot bonus). Dispersion = weapon + "
+                        "Dexterity + skill + recoil; you hit when the scatter lands "
+                        "within the target's size.",
     },
     "ko": {
         "brand": "CDDA 레시피", "search_ph": "아이템 이름 검색…", "mods": "모드",
@@ -111,6 +160,7 @@ UI_STRINGS = {
         "weight": "무게", "volume": "부피", "material": "재질", "melee": "근접",
         "categories": "카테고리", "all_skills": "모든 스킬", "max_lv": "최대 레벨",
         "lv": "Lv", "found": "입수 (루트 그룹)", "all_cats": "← 전체 카테고리",
+        "all_items": "전체 아이템", "cat_any": "모든 카테고리",
         "items_n": "{n}개", "item_col": "아이템", "browse_hint":
         "카테고리를 골라 둘러보거나, 위에서 이름으로 검색하세요.",
         "settings": "설정", "saved": "저장됨.",
@@ -162,7 +212,7 @@ UI_STRINGS = {
         "m_atkcost": "공격 비용", "m_special": "특수 공격",
         "m_harvest": "해체 산출", "m_death": "사망 시", "m_upgrades": "진화",
         "m_reproduces": "번식", "m_becomes": "변이",
-        "dmg_bash": "타격", "dmg_cut": "절단", "dmg_stab": "관통", "dmg_bullet": "탄환",
+        "dmg_bash": "타격", "dmg_cut": "베기", "dmg_stab": "관통", "dmg_bullet": "탄환",
         "dmg_acid": "산", "dmg_fire": "화염", "dmg_cold": "냉기", "dmg_elec": "전기",
         "m_extra_dmg": "추가 피해", "m_weapon": "장비 무기", "m_ammo": "탄약",
         "m_when_hit": "피격 시", "m_regen": "재생", "bodytype": "체형",
@@ -171,12 +221,58 @@ UI_STRINGS = {
         "m_zombify": "좀비화", "m_revert": "되돌아감", "m_aggro": "발견 시 적대",
         "m_food": "먹이", "m_pettrain": "길들이기 보너스", "m_seasons": "번식 계절",
         "raw_fields": "원본 JSON 필드 ({n})", "cat": "분류",
-        "atk_time_fmt": "공격 ~{a}–{b}초 (숙련→초보, {m0}–{m1}무브)",
-        "atk_tip": ("한 번 휘두르는 데 드는 무브 (speed 100에서 100무브 = 1초).\n"
+        "atk_time_fmt": "공격 ~{a}–{b}초 (숙련→초보, {m0}–{m1}행동력)",
+        "atk_tip": ("한 번 휘두르는 데 드는 행동력 (speed 100에서 100행동력 = 1초).\n"
                     "기본 = 65 + 부피/62.5mL + 무게/60g.\n"
                     "표시 범위는 근접 스킬 15(빠름) → 0(느림).\n"
-                    "민첩으로 더 줄고, 거추장·낮은 스태미나로 늘어남. 최소 25무브.\n"
+                    "민첩성으로 더 줄고, 방해도·낮은 스태미나로 늘어남. 최소 25행동력.\n"
                     "몬스터는 고정 attack_cost를 씀 — 자세히는 메커니즘 페이지."),
+        "nav_table": "아이템 표", "table_title": "아이템 표",
+        "table_hint": "정렬 가능한 표. 카테고리를 고르면 그 타입의 스탯 열이 추가되고, "
+            "도구 품질 선택·이름 필터가 가능하며, 열 머리글을 클릭하면 정렬됩니다.",
+        "all_types": "모든 타입", "type_col": "타입", "none_quality": "도구 품질…",
+        "tfilter_ph": "이름으로 필터…",
+        "col_bash": "타격", "col_cut": "베기", "col_tohit": "명중률",
+        "col_enc": "방해도", "col_cov": "범위", "col_warmth": "보온력",
+        "col_thick": "두께", "col_cal": "칼로리", "col_quench": "갈증 해소",
+        "col_healthy": "건강도", "col_fun": "의욕", "col_range": "사정거리",
+        "col_disp": "분산도", "qual_lv": "{q} Lv",
+        "mech_pick": "읽을 주제를 선택하세요.", "mech_back": "← 전체 주제",
+        "sim_nav": "전투 시뮬", "sim_title": "근접 전투 시뮬레이터",
+        "sim_hint": "BN 근접 공식으로 명중률·피해·처치 시간을 추정합니다. 값을 바꾸고 "
+                    "실행하세요.",
+        "sim_run": "실행", "sim_attacker": "공격자", "sim_weapon": "무기",
+        "sim_target": "대상", "sim_str": "체력", "sim_dex": "민첩성", "sim_per": "지각",
+        "sim_sk_melee": "근접 스킬", "sim_sk_weapon": "무기 스킬",
+        "sim_w_bash": "타격 피해", "sim_w_cut": "베기 피해", "sim_w_stab": "관통 피해",
+        "sim_w_hit": "명중률", "sim_w_vol": "부피 (mL)", "sim_w_wt": "무게 (g)",
+        "sim_t_dodge": "회피", "sim_a_bash": "방어(타격)", "sim_a_cut": "방어(베기)",
+        "sim_a_stab": "방어(관통)", "sim_t_hp": "HP", "sim_size": "크기",
+        "sim_size_tiny": "초소형", "sim_size_small": "소형", "sim_size_medium": "보통",
+        "sim_size_large": "대형", "sim_size_huge": "초대형",
+        "sim_hitchance": "명중 확률", "sim_critchance": "치명타(명중당)",
+        "sim_dmg_hit": "피해 / 명중", "sim_dmg_swing": "피해 / 스윙",
+        "sim_movecost": "공격 행동력", "sim_dps": "초당 피해", "sim_ttk": "처치 시간",
+        "sim_hit_sub": "명중치 {v}", "sim_atk_sub": "{v} /초",
+        "sim_dist": "스윙당 피해 분포 ({n}회 시행)",
+        "sim_assume": "스태미나 가득·방해도 0·양팔·무술/변이 버프 없음 가정, 양손 보너스 "
+                      "미적용. 피해는 타격/베기/관통 실제 굴림을 쓰고, 명중률은 실제 σ=25 "
+                      "기준 Φ((명중−회피)/5)입니다.",
+        "sim_mode": "모드", "sim_mode_melee": "근접", "sim_mode_ranged": "원거리",
+        "sim_gun": "총기", "sim_ammo": "탄약",
+        "sim_pick_weapon": "무기 선택", "sim_pick_monster": "몬스터 선택",
+        "sim_pick_gun": "총기 선택", "sim_pick_ammo": "탄약 선택",
+        "sim_pick_custom": "이름으로 검색…",
+        "sim_sk_gun": "총기 스킬", "sim_gun_disp": "분산도 (MoA)",
+        "sim_recoil": "반동 (MoA)", "sim_range": "사정거리 (칸)",
+        "sim_rng_dmg": "사격 피해", "sim_rng_pen": "장갑관통력",
+        "sim_proj_speed": "발사체 속도", "sim_a_bullet": "방어(탄환)",
+        "sim_aimed": "정밀타(조준)", "sim_dmg_shot": "피해 / 발",
+        "sim_avgdisp": "평균 분산도", "sim_shots_kill": "처치 탄수",
+        "sim_dist_shot": "발당 피해 분포 ({n}회 시행)",
+        "sim_assume_r": "발당 기준이며 조준 시간·연사를 무시합니다. 몸통 명중 가정"
+                        "(severity ≤1.5, 헤드샷 보너스 없음). 분산 = 무기 + 민첩성 + 스킬 + "
+                        "반동이고, 흩어짐이 표적 크기 안에 들어오면 명중입니다.",
     },
     "ja": {
         "brand": "CDDAレシピ", "search_ph": "アイテム名で検索…", "mods": "MOD",
@@ -194,6 +290,7 @@ UI_STRINGS = {
         "weight": "重量", "volume": "体積", "material": "材質", "melee": "近接",
         "categories": "カテゴリ", "all_skills": "全スキル", "max_lv": "最大レベル",
         "lv": "Lv", "found": "入手（ルートグループ）", "all_cats": "← 全カテゴリ",
+        "all_items": "全アイテム", "cat_any": "全カテゴリ",
         "items_n": "{n}件", "item_col": "アイテム", "browse_hint":
         "カテゴリを選んで閲覧するか、上で名前検索してください。",
         "settings": "設定", "saved": "保存しました。",
@@ -260,6 +357,51 @@ UI_STRINGS = {
                     "表示範囲は近接スキル15(速)→0(遅).\n"
                     "器用さでさらに減少、かさばり・低スタミナで増加. 最低25ムーブ.\n"
                     "モンスターは固定のattack_costを使用 — 詳細は仕組みページ."),
+        "nav_table": "アイテム表", "table_title": "アイテム表",
+        "table_hint": "並べ替え可能な表。カテゴリを選ぶとそのタイプのステータス列が追加され、"
+            "道具品質の選択・名前での絞り込みが可能。列見出しのクリックで並べ替え。",
+        "all_types": "全タイプ", "type_col": "タイプ", "none_quality": "道具品質…",
+        "tfilter_ph": "名前で絞り込み…",
+        "col_bash": "打撃", "col_cut": "切断", "col_tohit": "命中",
+        "col_enc": "かさばり", "col_cov": "範囲(%)", "col_warmth": "保温",
+        "col_thick": "厚さ", "col_cal": "カロリー", "col_quench": "水分",
+        "col_healthy": "健康", "col_fun": "楽しさ", "col_range": "射程",
+        "col_disp": "分散", "qual_lv": "{q} Lv",
+        "mech_pick": "トピックを選択してください。", "mech_back": "← 全トピック",
+        "sim_nav": "戦闘シミュ", "sim_title": "近接戦闘シミュレーター",
+        "sim_hint": "BNの近接式で命中率・ダメージ・撃破時間を推定。値を変えて実行。",
+        "sim_run": "実行", "sim_attacker": "攻撃者", "sim_weapon": "武器",
+        "sim_target": "対象", "sim_str": "筋力", "sim_dex": "器用", "sim_per": "知覚",
+        "sim_sk_melee": "近接スキル", "sim_sk_weapon": "武器スキル",
+        "sim_w_bash": "打撃ダメージ", "sim_w_cut": "切断ダメージ", "sim_w_stab": "刺突ダメージ",
+        "sim_w_hit": "命中補正", "sim_w_vol": "体積 (mL)", "sim_w_wt": "重量 (g)",
+        "sim_t_dodge": "回避", "sim_a_bash": "防御(打撃)", "sim_a_cut": "防御(切断)",
+        "sim_a_stab": "防御(刺突)", "sim_t_hp": "HP", "sim_size": "サイズ",
+        "sim_size_tiny": "極小", "sim_size_small": "小", "sim_size_medium": "中",
+        "sim_size_large": "大", "sim_size_huge": "極大",
+        "sim_hitchance": "命中率", "sim_critchance": "クリティカル(命中毎)",
+        "sim_dmg_hit": "ダメージ / 命中", "sim_dmg_swing": "ダメージ / 振り",
+        "sim_movecost": "攻撃ムーブ", "sim_dps": "毎秒ダメージ", "sim_ttk": "撃破時間",
+        "sim_hit_sub": "命中値 {v}", "sim_atk_sub": "{v} /秒",
+        "sim_dist": "振り毎ダメージ分布 ({n}回試行)",
+        "sim_assume": "スタミナ満タン・かさばり0・両腕・武術/変異バフなしを仮定、両手"
+                      "ボーナス未適用。ダメージは打撃/切断/刺突の実ロール、命中率は実σ=25の"
+                      "Φ((命中−回避)/5)。",
+        "sim_mode": "モード", "sim_mode_melee": "近接", "sim_mode_ranged": "遠距離",
+        "sim_gun": "銃", "sim_ammo": "弾薬",
+        "sim_pick_weapon": "武器を選択", "sim_pick_monster": "モンスターを選択",
+        "sim_pick_gun": "銃を選択", "sim_pick_ammo": "弾薬を選択",
+        "sim_pick_custom": "名前で検索…",
+        "sim_sk_gun": "銃スキル", "sim_gun_disp": "分散 (MoA)",
+        "sim_recoil": "反動 (MoA)", "sim_range": "射程 (マス)",
+        "sim_rng_dmg": "ダメージ", "sim_rng_pen": "装甲貫通",
+        "sim_proj_speed": "弾速", "sim_a_bullet": "防御(弾)",
+        "sim_aimed": "精密(狙撃)", "sim_dmg_shot": "ダメージ / 発",
+        "sim_avgdisp": "平均分散", "sim_shots_kill": "撃破弾数",
+        "sim_dist_shot": "発毎ダメージ分布 ({n}回試行)",
+        "sim_assume_r": "発毎で照準時間・連射を無視。胴命中を仮定(severity ≤1.5、"
+                        "ヘッドショット無し)。分散 = 武器 + 器用 + スキル + 反動で、"
+                        "散布が対象サイズ内に収まれば命中。",
     },
 }
 
@@ -289,6 +431,93 @@ def cat_name(code, lang):
     d = CAT_NAMES.get(code)
     if not d:
         return code.replace("CC_", "").replace("_", " ").title()
+    return d.get(lang) or d["en"]
+
+
+
+# json item "type" -> readable name, for the item-table type filter.
+TYPE_NAMES = {
+    "GENERIC": {"en": "Generic", "ko": "일반", "ja": "汎用"},
+    "COMESTIBLE": {"en": "Food / Drug", "ko": "음식 / 약물", "ja": "食料 / 薬"},
+    "ARMOR": {"en": "Armor", "ko": "방어구", "ja": "防具"},
+    "TOOL": {"en": "Tool", "ko": "도구", "ja": "道具"},
+    "TOOL_ARMOR": {"en": "Worn tool", "ko": "착용 도구", "ja": "装着道具"},
+    "TOOLMOD": {"en": "Tool mod", "ko": "도구 개조", "ja": "道具改造"},
+    "GUN": {"en": "Gun", "ko": "총기", "ja": "銃"},
+    "GUNMOD": {"en": "Gun mod", "ko": "총기 개조", "ja": "銃改造"},
+    "MAGAZINE": {"en": "Magazine", "ko": "탄창", "ja": "弾倉"},
+    "AMMO": {"en": "Ammo", "ko": "탄약", "ja": "弾薬"},
+    "BOOK": {"en": "Book", "ko": "책", "ja": "本"},
+    "BIONIC_ITEM": {"en": "Bionic", "ko": "바이오닉", "ja": "バイオニック"},
+    "ENGINE": {"en": "Engine", "ko": "엔진", "ja": "エンジン"},
+    "WHEEL": {"en": "Wheel", "ko": "바퀴", "ja": "車輪"},
+    "PET_ARMOR": {"en": "Pet armor", "ko": "동물 방어구", "ja": "ペット防具"},
+    "CONTAINER": {"en": "Container", "ko": "용기", "ja": "容器"},
+    "BATTERY": {"en": "Battery", "ko": "배터리", "ja": "電池"},
+}
+
+
+def type_name(t, lang):
+    d = TYPE_NAMES.get(t)
+    if not d:
+        return (t or "").replace("_", " ").title()
+    return d.get(lang) or d["en"]
+
+
+
+# in-game item_category id -> readable name (the fine-grained classification used
+# for browsing). Unknown ids fall back to a prettified id.
+ITEMCAT_NAMES = {
+    "weapons": {"en": "Weapons", "ko": "무기", "ja": "武器"},
+    "guns": {"en": "Guns", "ko": "총기", "ja": "銃"},
+    "ammo": {"en": "Ammo", "ko": "탄약", "ja": "弾薬"},
+    "magazines": {"en": "Magazines", "ko": "탄창", "ja": "弾倉"},
+    "mods": {"en": "Gun mods", "ko": "총기 개조", "ja": "銃改造"},
+    "clothing": {"en": "Clothing", "ko": "의류", "ja": "衣類"},
+    "armor": {"en": "Armor", "ko": "방어구", "ja": "防具"},
+    "food": {"en": "Food", "ko": "음식", "ja": "食料"},
+    "cooking_ingredients": {"en": "Cooking ingredients", "ko": "요리 재료", "ja": "料理材料"},
+    "drugs": {"en": "Drugs", "ko": "약물", "ja": "薬"},
+    "books": {"en": "Books", "ko": "책", "ja": "本"},
+    "tools": {"en": "Tools", "ko": "도구", "ja": "道具"},
+    "tools_cooking": {"en": "Cooking tools", "ko": "요리 도구", "ja": "調理道具"},
+    "tools_workshop": {"en": "Workshop tools", "ko": "작업장 도구", "ja": "工房道具"},
+    "tools_farming": {"en": "Farming tools", "ko": "농사 도구", "ja": "農具"},
+    "tools_chemistry": {"en": "Chemistry tools", "ko": "화학 도구", "ja": "化学道具"},
+    "tools_entry": {"en": "Entry tools", "ko": "침입 도구", "ja": "侵入道具"},
+    "chems": {"en": "Chemicals", "ko": "화학약품", "ja": "化学薬品"},
+    "container": {"en": "Containers", "ko": "용기", "ja": "容器"},
+    "electronics": {"en": "Electronics", "ko": "전자기기", "ja": "電子機器"},
+    "scrap_electronics": {"en": "Electronic scrap", "ko": "전자 부품", "ja": "電子くず"},
+    "scrap_metal": {"en": "Metal scrap", "ko": "금속 부품", "ja": "金属くず"},
+    "scrap_fabric": {"en": "Fabric scrap", "ko": "천 조각", "ja": "布くず"},
+    "scrap_wood": {"en": "Wood scrap", "ko": "목재 조각", "ja": "木くず"},
+    "scrap_plastic": {"en": "Plastic scrap", "ko": "플라스틱 조각", "ja": "プラくず"},
+    "scrap_glass": {"en": "Glass scrap", "ko": "유리 조각", "ja": "ガラスくず"},
+    "scrap_ceramics": {"en": "Ceramic scrap", "ko": "도자기 조각", "ja": "陶器くず"},
+    "veh_parts": {"en": "Vehicle parts", "ko": "차량 부품", "ja": "車両部品"},
+    "spare_parts": {"en": "Spare parts", "ko": "예비 부품", "ja": "予備部品"},
+    "deployables": {"en": "Deployables", "ko": "설치물", "ja": "設置物"},
+    "valuables": {"en": "Valuables", "ko": "귀중품", "ja": "貴重品"},
+    "fuel": {"en": "Fuel", "ko": "연료", "ja": "燃料"},
+    "battery": {"en": "Batteries", "ko": "배터리", "ja": "電池"},
+    "rocks": {"en": "Rocks", "ko": "돌", "ja": "石"},
+    "seeds": {"en": "Seeds", "ko": "씨앗", "ja": "種"},
+    "mutagen": {"en": "Mutagens", "ko": "변이원", "ja": "変異原"},
+    "bionics": {"en": "Bionics", "ko": "바이오닉", "ja": "バイオニック"},
+    "soil": {"en": "Soil", "ko": "흙", "ja": "土"},
+    "maps": {"en": "Maps", "ko": "지도", "ja": "地図"},
+    "artifacts": {"en": "Artifacts", "ko": "유물", "ja": "アーティファクト"},
+    "manuals": {"en": "Manuals", "ko": "설명서", "ja": "マニュアル"},
+    "currency": {"en": "Currency", "ko": "화폐", "ja": "通貨"},
+    "other": {"en": "Other", "ko": "기타", "ja": "その他"},
+}
+
+
+def itemcat_name(cid, lang):
+    d = ITEMCAT_NAMES.get(cid)
+    if not d:
+        return (cid or "other").replace("_", " ").title()
     return d.get(lang) or d["en"]
 
 
@@ -413,20 +642,20 @@ MECH_DOC = {
          "공급원이 아니다.)</p>"),
         ("시간·턴·행동 비용",
          "<p>세상은 <b>1초짜리 턴</b>으로 진행된다. 각 생물은 매 턴 <code>speed</code>만큼 "
-         "<b>무브(이동점수)</b>를 받고(보통 사람 100), 행동에 소비하다가 무브가 떨어지면 "
-         "그 1초가 흐른다. speed가 높을수록 무브가 많아 초당 더 많이 행동한다. 한 칸 이동은 "
+         "<b>행동력(이동점수)</b>를 받고(보통 사람 100), 행동에 소비하다가 행동력가 떨어지면 "
+         "그 1초가 흐른다. speed가 높을수록 행동력가 많아 초당 더 많이 행동한다. 한 칸 이동은 "
          "그 지형의 이동비용(평지 ≈100)이라, speed 100이면 한 걸음이 약 1초.</p>"
-         "<p>플레이어 근접 공격의 무브 비용은 이렇게 쌓인다(BN 소스 기준):</p><ul>"
+         "<p>플레이어 근접 공격의 행동력 비용은 이렇게 쌓인다(BN 소스 기준):</p><ul>"
          "<li>무기 기본 = <code>65 + 부피/62.5 mL + 무게/60 g</code> (크고 무거울수록 "
          "느림)</li>"
-         "<li><code>기본 / 2</code>에서 시작 → 몸통+양손 평균 <b>거추장(encumbrance)</b>을 "
+         "<li><code>기본 / 2</code>에서 시작 → 몸통+양손 평균 <b>방해도(encumbrance)</b>을 "
          "더함 → <b>스태미나</b> 페널티 곱함(평소 1배, 스태미나 25% 미만에서 최대 2배)</li>"
          "<li><b>스킬</b> 항 <code>(기본/2) × (15 − 근접스킬) / 15</code> 더함(스킬 15면 "
-         "사라짐), 그다음 <b>민첩</b>을 뺌</li>"
-         "<li>마지막으로 무술·변이 보정, 결과는 최소 25무브 아래로는 안 내려감</li></ul>"
-         "<p>speed 100에서 100무브 = 1초이므로, 100무브 공격은 초당 1회다. 가볍고·숙련되고·"
-         "민첩할수록 무브가 줄어 빨라진다. 몬스터는 이 계산을 거치지 않고 JSON에 "
-         "<code>attack_cost</code>(무브)를 직접 가진다.</p>"),
+         "사라짐), 그다음 <b>민첩성</b>을 뺌</li>"
+         "<li>마지막으로 무술·변이 보정, 결과는 최소 25행동력 아래로는 안 내려감</li></ul>"
+         "<p>speed 100에서 100행동력 = 1초이므로, 100행동력 공격은 초당 1회다. 가볍고·숙련되고·"
+         "민첩성할수록 행동력가 줄어 빨라진다. 몬스터는 이 계산을 거치지 않고 JSON에 "
+         "<code>attack_cost</code>(행동력)를 직접 가진다.</p>"),
     ],
     "ja": [
         ("データ vs. エンジン",
@@ -488,4 +717,398 @@ MECH_DOC = {
          "<code>attack_cost</code>（ムーブ）を直接持つ。</p>"),
     ],
 }
+
+
+# ---------------------------------------------------------------------------
+# Combat formulas, split into topics. The mechanics page is a topic list; each
+# topic renders its own sections. Formula <pre> blocks are language-neutral
+# (math / engine identifiers) and shared by every language; only the headings
+# and surrounding prose are localized. Japanese bodies fall back to English
+# (see mech_sections); topic titles below are localized in all three.
+# Source: Cataclysm: Bright Nights C++ at the commit your build was made from
+# (VERSION.txt). Line refs live in docs/combat-formulas.md.
+# ---------------------------------------------------------------------------
+MECH_TOPICS = [
+    ("basics",     {"en": "Data & crafting basics", "ko": "데이터·제작 기초", "ja": "データ・製作の基礎"}),
+    ("rng",        {"en": "RNG & constants", "ko": "난수·상수", "ja": "乱数・定数"}),
+    ("melee_hit",  {"en": "Melee: hit & dodge", "ko": "근접: 명중·회피", "ja": "近接: 命中・回避"}),
+    ("melee_crit", {"en": "Melee: critical hits", "ko": "근접: 치명타", "ja": "近接: クリティカル"}),
+    ("melee_dmg",  {"en": "Melee: damage", "ko": "근접: 피해", "ja": "近接: ダメージ"}),
+    ("defense",    {"en": "Damage application & armor", "ko": "피해 적용·방어구", "ja": "ダメージ適用・防具"}),
+    ("melee_cost", {"en": "Attack speed & stamina", "ko": "공격 속도·스태미나", "ja": "攻撃速度・スタミナ"}),
+    ("ranged",     {"en": "Ranged combat", "ko": "원거리 전투", "ja": "遠距離戦闘"}),
+    ("monster",    {"en": "Monster combat", "ko": "몬스터 전투", "ja": "モンスター戦闘"}),
+]
+
+
+# shared, language-neutral formula blocks --------------------------------------
+_F_DICE = (
+    "<pre class=mechcode>dice(n, sides)     = sum of n rolls of rng(1..sides)\n"
+    "rng_float(lo, hi)  = uniform real in [lo, hi)\n"
+    "normal_roll(m, s)  = Normal(mean m, stddev s)   # 2nd arg IS the stddev\n"
+    "rng_normal(lo, hi) = clamp(normal_roll((lo+hi)/2, (hi-lo)/4), lo, hi)\n"
+    "roll_remainder(x)  = probabilistic rounding (1.3 -> 1 at 70%, 2 at 30%)\n"
+    "one_in(n)          = true with probability 1/n</pre>")
+_F_CONST = (
+    "<pre class=mechcode>iso_tangent(d, theta) = sqrt(2*d^2*(1-cos theta)) = 2*d*sin(theta/2)\n\n"
+    "MAX_SKILL = 10    BIO_CQB_LEVEL = 5    MAX_RECOIL = 3000 MoA\n"
+    "accuracy_roll_stddev = 5.0\n"
+    "accuracy bands:  headshot .1   crit .2   goodhit .5   standard .8   graze 1.0</pre>")
+_F_TOHIT = (
+    "<pre class=mechcode>get_hit_base   = dex/4\n"
+    "get_hit_weapon = skill_w/3 + skill_melee/2 + weapon.to_hit + weapon.hit_bonus\n"
+    "                 (skill_w = weapon's melee skill; CQB floors it at 5)\n"
+    "get_melee_hit  = get_hit_base + get_hit_weapon + mabuff_tohit\n"
+    "                 HYPEROPIC (uncorrected): -2 ;  bouldering: x0.75\n"
+    "                 x max(0.25, 1 - torso_enc/100)</pre>")
+_F_HITROLL = (
+    "<pre class=mechcode>hit_roll   = melee_hit_range(hit) = normal_roll(hit*5, 25)\n"
+    "hit_spread = hit_roll - dodge_roll - size_penalty   # hit if >= 0\n"
+    "dodge_roll = get_dodge() * 5\n"
+    "IMMOBILE target: hit_spread += 40\n"
+    "size_penalty: tiny +30  small +15  medium 0  large -10  huge -20</pre>")
+_F_DISC_A = ("<pre class=mechcode>melee_hit_range(acc) = normal_roll(acc*5, 5*5)  ->  N(mean 5*acc, stddev 25)</pre>")
+_F_DISC_B = ("<pre class=mechcode>hit_chance(acc) = 0.5*(1 + erf(-acc/sqrt2)) = Phi(-acc)  ->  assumes N(5*acc, 5)</pre>")
+_F_DISC_P = ("<pre class=mechcode>m = hit - dodge\nP(hit) = Phi(5m / sigma);   actual sigma=25 -> Phi(m/5);   intended sigma=5 -> Phi(m)</pre>")
+_F_DISC_TBL = (
+    "<table class=mecht><tr><th>m = hit-dodge</th><th>actual (&sigma;=25)</th>"
+    "<th>intended (&sigma;=5)</th></tr>"
+    "<tr><td>-5</td><td>15.9%</td><td>0.00003%</td></tr>"
+    "<tr><td>-2</td><td>34.5%</td><td>2.3%</td></tr>"
+    "<tr><td>0</td><td>50%</td><td>50%</td></tr>"
+    "<tr><td>+2</td><td>65.5%</td><td>97.7%</td></tr>"
+    "<tr><td>+5</td><td>84.1%</td><td>99.99997%</td></tr></table>")
+_F_CRIT = (
+    "<pre class=mechcode>scored_crit = ( rng_float(0,1) < crit_chance )\n\n"
+    "weapon_cc = 0.5  (unarmed: 0.5 + 0.05*skill_unarmed)\n"
+    "  ath = weapon.to_hit + weapon.hit_bonus\n"
+    "  ath>0: weapon_cc = max(weapon_cc, 0.5 + 0.1*ath);  ath<0: weapon_cc += 0.1*ath\n"
+    "  weapon_cc = clamp(weapon_cc, 0, 1)\n"
+    "stat_cc   = clamp(0.25 + 0.01*dex + 0.02*per, 0, 1)\n"
+    "sk        = skill_w (CQB->5) + skill_melee/2.5\n"
+    "skill_cc  = clamp(0.25 + 0.025*sk, 0, 1)\n\n"
+    "triple = weapon_cc * stat_cc * skill_cc            # always a crit\n"
+    "if hit_roll > 1.5*target_dodge:\n"
+    "  double = 0.5*(wc*sc + sc*kc + wc*kc - 3*triple)\n"
+    "  crit_chance = triple + double\n"
+    "else:\n"
+    "  crit_chance = triple</pre>")
+_F_BASH = (
+    "<pre class=mechcode>skill = bashing (unarmed skill if unarmed weapon); CQB->5;  stat = str\n"
+    "stat_bonus = bonus_damage + mabuff(BASH);  bonus_damage = rng_float(str/2, str)\n"
+    "weap_dam   = weapon.damage_melee(BASH) + stat_bonus  (+ skill if unarmed)\n"
+    "bash_cap   = 2*stat + 2*skill\n"
+    "bash_mul   = skill<5 ? 0.8+0.08*skill : 0.96+0.04*skill\n"
+    "if bash_cap < weap_dam and weapon != null: bash_mul *= (1 + bash_cap/weap_dam)/2\n"
+    "low_cap    = min(1, str/20);  bash_min = low_cap*weap_dam\n"
+    "weap_dam   = rng_float(bash_min, weap_dam)\n"
+    "crit: bash_mul *= 1.5,  armor_mult *= 0.5   # 50% penetration</pre>")
+_F_CUT = (
+    "<pre class=mechcode>cut_dam = mabuff(CUT) + weapon.damage_melee(CUT)  (+unarmed bonuses);  skip if <= 0\n"
+    "cut_mul = skill_cut<5 ? 0.8+0.08*s : 0.96+0.04*s\n"
+    "DIAMOND flag: arpen += cut_dam*0.35 + 10\n"
+    "crit: cut_mul *= 1.25,  arpen += 5,  armor_mult = 0.75</pre>")
+_F_STAB = (
+    "<pre class=mechcode>stab_dam = mabuff(STAB) + weapon.damage_melee(STAB) (+unarmed);  skip if <= 0\n"
+    "stab_mul = skill_stab<=5 ? 0.66+0.1*s : 0.86+0.06*s\n"
+    "DIAMOND flag: arpen += stab_dam*0.35 + 10\n"
+    "crit: stab_mul *= 1 + skill_stab/10,  armor_mult *= 0.66</pre>")
+_F_DMG_INST = (
+    "<pre class=mechcode>both arms broken:           x0.1\n"
+    "polearm hitting adjacent:   x0.7\n"
+    "stamina < 25%:              x(0.5 + stamina/max*2)</pre>")
+_F_DEF_ORDER = (
+    "<pre class=mechcode>1) absorb_hit subtracts armor from each unit's amount\n"
+    "2) final = floor( amount_after_armor * damage_multiplier )\n"
+    "   -> crit / skill multipliers apply AFTER armor</pre>")
+_F_DEF_RESIST = (
+    "<pre class=mechcode>effective_resist(du) = max(type_resist - res_pen, 0) * res_mult\n"
+    "per layer:  amount -= effective_resist;   res_pen -= type_resist</pre>")
+_F_COST = (
+    "<pre class=mechcode>item base = 65 + (volume/62.5mL + weight/60g) / count\n\n"
+    "b     = base / 2\n"
+    "move  = b + torso_enc + (hand_l_enc + hand_r_enc)/2\n"
+    "move *= 1 + max((0.25 - stamina_ratio)*4, 0)     # stamina penalty 1x..2x\n"
+    "move += b * (15 - skill_melee) / 15              # skill\n"
+    "move -= dex\n"
+    "if base>100 and one-handable and two arms: move = move^0.975\n"
+    "move = move*ma_mult + ma_flat;  *= mutation modifier\n"
+    "result = max(25, move)        # 100 moves = 1s at speed 100</pre>")
+_F_STUMBLE = (
+    "<pre class=mechcode>stumble = volume/125mL + weight/(str*10g + 13g)    (DEFT -> 0)\n"
+    "  on miss: move += min(60, stumble)\n\n"
+    "stamina cost = (weight/16g + roll_remainder((arm_l+arm_r)*2) - (DEFT?50:0) + 50)\n"
+    "             * max(0.667, (30 - skill_melee)/30) * (0.75 + 1/(2 + str*0.25))</pre>")
+_F_DISP = (
+    "<pre class=mechcode>roll() = (sum rng_float(0, L_i) + sum rng_normal(N_i)) * prod mult_k   # MoA\n\n"
+    "weapon_dispersion (normal source) = gun_dispersion()\n"
+    "+ ranged_dex_mod = max((20 - dex)*0.5, 0)\n"
+    "+ (arm_l_enc + arm_r_enc)/5\n"
+    "+ dispersion_from_skill(avgSkill, wd),  avgSkill = min(10, (gun + gun_skill)/2)\n"
+    "x0.75 targeting CBM | x0.75 crouch | x0.25 laser-guided\n"
+    "underwater mismatch: +150, x4</pre>")
+_F_DISP_SKILL = (
+    "<pre class=mechcode>dispersion_from_skill(s, wd):\n"
+    "  s >= 10:  0\n"
+    "  s >= 5 :  3*(10-s) + wd*(10-s)*1.25/5\n"
+    "  s < 5  :  3*(10-s) + wd*(1.25 + (5-s)*3.75/5)</pre>")
+_F_AIM = (
+    "<pre class=mechcode>recoil_total = max(0, recoil + |vehicle velocity|*3/100 + ench)\n"
+    "aim_per_move ~ (10 + skill + dex + sight - enc) * vol_mult * 6.5\n"
+    "             * (1 - logRange(0, 3000, recoil)),  >= 5</pre>")
+_F_PROJ = (
+    "<pre class=mechcode>missed_by_tiles = 2*range*sin(dispersion/2)\n"
+    "missed_by       = min(1, missed_by_tiles / target_size)\n\n"
+    "goodhit = missed_by + clamp(dodge_roll / dice(10, proj.speed), 0, 1)\n"
+    "goodhit >= 1  ->  avoided (no damage)</pre>")
+_F_SEV = (
+    "<pre class=mechcode>goodhit > 0.8: severity = max(0.01, 4*(1-goodhit))   # graze 1-80%\n"
+    "goodhit > 0.5: severity = 1.6 - goodhit              # 80-110%\n"
+    "goodhit > 0.2: severity = 1.766 - goodhit*4/3        # 110-150%\n"
+    "else:          severity = 1.5\n"
+    "cap by body part: head <=2.0 (1.5 for characters), torso <=1.5, limbs <=1.25\n"
+    "impact.mult_damage(severity, pre_armor = goodhit > 0.8)</pre>")
+_F_MON = (
+    "<pre class=mechcode>get_hit_base = melee_skill;  hit_roll = melee_hit_range(get_hit)  (/4 bouldering)\n"
+    "get_dodge_base = sk_dodge;   dodge_roll = get_dodge() * 5\n"
+    "melee_attack(t) = melee_attack(t, get_hit());   moves -= attack_cost\n"
+    "damage = melee_damage(fixed)\n"
+    "       + dice(melee_dice, melee_sides) BASH + bash_bonus BASH + cut_bonus CUT\n"
+    "stability = dice(melee_sides, melee_dice) + size (tiny -7 .. huge +10)</pre>")
+
+
+# plain-language intros (one per topic, per language) shown first in each topic
+_I_HIT_EN = (
+    "<p>Your <b>accuracy</b> is one number built from Dexterity, your melee &amp; "
+    "weapon skills, and the weapon's to-hit. The game rolls a <b>wide bell curve</b> "
+    "around 5&times; that number, and you hit if the roll clears 5&times; the target's "
+    "dodge (plus a size adjustment). Because the curve is wide (&sigma;=25), even a "
+    "clear accuracy edge is far from a sure hit.</p>"
+    "<p><i>Example:</i> DEX 10, melee 3, weapon skill 3, a +1 weapon &rarr; accuracy 6. "
+    "Against a zombie with dodge 3 your edge is 3, about a <b>73%</b> chance to hit — "
+    "not the ~100% a naive guess suggests.</p>")
+_I_HIT_KO = (
+    "<p><b>명중치</b>는 민첩성 + 근접·무기 스킬 + 무기 명중보정으로 만들어지는 하나의 "
+    "숫자입니다. 게임은 그 값의 5배를 중심으로 <b>폭이 넓은 종형 곡선</b>으로 굴리고, "
+    "굴림이 대상 회피의 5배(+크기 보정)를 넘으면 명중합니다. 곡선이 넓어서(&sigma;=25) "
+    "명중치가 꽤 앞서도 확정 명중과는 거리가 멉니다.</p>"
+    "<p><i>예:</i> 민첩성 10, 근접 3, 무기 3, +1 무기 &rarr; 명중치 6. 회피 3 좀비 상대로 "
+    "우위는 3이라 명중 확률은 약 <b>73%</b> — 단순 추정의 ~100%가 아닙니다.</p>")
+_I_CRIT_EN = (
+    "<p>Every landed hit can <b>critical</b>. The chance is the product of three "
+    "sub-chances — weapon, your stats (DEX/PER) and skill — so raising all three "
+    "compounds. A hit that clearly beats dodge unlocks an extra bonus chance. Crits "
+    "raise damage and partly <b>ignore armor</b>.</p>")
+_I_CRIT_KO = (
+    "<p>명중한 공격은 모두 <b>치명타</b>가 될 수 있습니다. 확률은 무기·능력치(민첩성/지각)·"
+    "스킬 세 하위 확률의 곱이라 셋을 함께 올리면 크게 좋아집니다. 회피를 확실히 넘긴 "
+    "명중은 보너스 확률이 추가로 열립니다. 치명타는 피해를 올리고 방어를 일부 "
+    "<b>무시</b>합니다.</p>")
+_I_DMG_EN = (
+    "<p>Damage = the weapon's listed damage + a <b>Strength</b> bonus, then scaled by a "
+    "<b>skill multiplier</b> (more skill → harder hits; low stats cap the top end). "
+    "Each type — bash, cut, stab — is rolled separately, and <b>armor is subtracted "
+    "before</b> that multiplier. Crits add their own multiplier and armor "
+    "penetration.</p>")
+_I_DMG_KO = (
+    "<p>피해 = 무기 표기 피해 + <b>체력</b> 보너스, 여기에 <b>스킬 배수</b>가 곱해집니다"
+    "(스킬이 높을수록 강하고, 능력치가 낮으면 상한이 눌립니다). 타격·베기·관통은 각각 "
+    "따로 굴려지고, <b>방어구는 배수 적용 전에 먼저 차감</b>됩니다. 치명타는 자체 배수와 "
+    "방어 관통을 더합니다.</p>")
+_I_DEF_EN = (
+    "<p>When you're hit, <b>armor is subtracted from the raw damage first</b>; only "
+    "then is the crit/skill multiplier applied to what's left. Penetration lowers the "
+    "armor value before subtraction. Worn layers mitigate in turn — outer first — but "
+    "a layer counts only if it covers the spot and a coverage roll passes.</p>")
+_I_DEF_KO = (
+    "<p>피격 시 <b>방어구가 먼저 원시 피해에서 차감</b>되고, 남은 값에만 치명타/스킬 "
+    "배수가 곱해집니다. 관통은 차감 전에 방어 수치를 낮춥니다. 착용한 레이어가 겉부터 "
+    "차례로 경감하지만, 그 부위를 덮고 범위(coverage) 굴림을 통과해야 작동합니다.</p>")
+_I_COST_EN = (
+    "<p>Heavier, bulkier weapons swing <b>slower</b>; melee skill and Dexterity make "
+    "you faster. The cost is in <b>moves</b> — at normal speed 100, 100 moves = 1 "
+    "second — so fewer moves means more swings per second. Low stamina makes every "
+    "swing cost more.</p>")
+_I_COST_KO = (
+    "<p>무겁고 부피 큰 무기는 <b>느리게</b> 휘둘러지고, 근접 스킬과 민첩성이 빠르게 "
+    "해줍니다. 비용 단위는 <b>행동력</b>로, 보통 속도 100에서 100행동력 = 1초라 행동력가 "
+    "적을수록 초당 공격이 늘어납니다. 스태미나가 낮으면 매 공격 비용이 커집니다.</p>")
+_I_RANGED_EN = (
+    "<p>A shot scatters by an <b>angle (dispersion)</b> built from the weapon, your gun "
+    "skills, Dexterity and current recoil; <b>aiming</b> shrinks it over time. Whether "
+    "you hit depends on how far that scatter throws the shot versus the target's size. "
+    "The closer to dead-center, the more damage — up to a critical.</p>")
+_I_RANGED_KO = (
+    "<p>발사된 탄은 무기·총기 스킬·민첩성·현재 반동으로 만들어진 <b>각도(분산)</b>만큼 "
+    "흩어지고, <b>조준</b>하면 시간에 따라 줄어듭니다. 명중 여부는 그 흩어짐이 대상 "
+    "크기에 비해 얼마나 빗나가게 하는지로 정해집니다. 정중앙에 가까울수록 피해가 커지고 "
+    "치명타까지 갑니다.</p>")
+_I_MON_EN = (
+    "<p>Monsters use the <b>same</b> hit/damage engine, but their numbers come straight "
+    "from JSON: accuracy from <code>melee_skill</code>, dodge from <code>sk_dodge</code>, "
+    "damage from <code>melee_dice</code> / <code>melee_sides</code> plus bonuses — not "
+    "computed from attributes like a character.</p>")
+_I_MON_KO = (
+    "<p>몬스터도 <b>같은</b> 명중/피해 엔진을 쓰지만, 수치는 JSON에서 바로 옵니다: 명중은 "
+    "<code>melee_skill</code>, 회피는 <code>sk_dodge</code>, 피해는 "
+    "<code>melee_dice</code> / <code>melee_sides</code> + 보너스이며, 캐릭터처럼 능력치로 "
+    "계산하지 않습니다.</p>")
+
+COMBAT_DOC = {
+    "en": {
+        "rng": [
+            ("Source", "<p>These formulas come straight from the Cataclysm: Bright "
+             "Nights C++ engine at the commit your build was made from "
+             "(<code>VERSION.txt</code>). They describe the engine, not JSON data, so "
+             "they don't change with mods. Exact <code>file:line</code> references are "
+             "in <code>docs/combat-formulas.md</code>.</p>"),
+            ("Dice & random rolls", _F_DICE),
+            ("Geometry & constants", _F_CONST),
+        ],
+        "melee_hit": [
+            ("In plain terms", _I_HIT_EN),
+            ("To-hit value", _F_TOHIT),
+            ("Hit roll, dodge & spread",
+             _F_HITROLL + "<p>The attacker hits when the rolled accuracy beats the "
+             "target's scaled dodge plus a size penalty.</p>"),
+            ("&#9888; Roll standard-deviation mismatch",
+             "<p>The constant <code>accuracy_roll_stddev = 5.0</code> is used "
+             "inconsistently. The function that produces the <b>actual</b> roll passes "
+             "its square as the standard deviation:</p>" + _F_DISC_A +
+             "<p>but the AI/display estimator <code>hit_chance</code> assumes a stddev "
+             "of 5:</p>" + _F_DISC_B +
+             "<p>Because <code>normal_roll</code>'s second argument <i>is</i> the "
+             "standard deviation, the real roll is 5&times; wider than the estimator "
+             "models. Writing <code>m = hit - dodge</code>:</p>" + _F_DISC_P +
+             "<p>So a point of accuracy is worth one fifth of what the estimator "
+             "implies, and melee is far swingier. <code>hit_chance</code> is only used "
+             "by NPC AI, never in real resolution, so players actually experience the "
+             "&sigma;=25 column:</p>" + _F_DISC_TBL),
+        ],
+        "melee_crit": [
+            ("In plain terms", _I_CRIT_EN),
+            ("Critical chance", "<p>Three independent chances (weapon, stats, skill) are "
+             "combined. The &quot;triple&quot; is a guaranteed crit; the &quot;double&quot; "
+             "term is only added when the hit roll clearly beats dodge.</p>" + _F_CRIT),
+        ],
+        "melee_dmg": [
+            ("In plain terms", _I_DMG_EN),
+            ("Bash", _F_BASH),
+            ("Cut", _F_CUT),
+            ("Stab", _F_STAB),
+            ("Whole-instance multipliers", "<p>Applied to the rolled instance just "
+             "before the hit lands:</p>" + _F_DMG_INST),
+        ],
+        "defense": [
+            ("In plain terms", _I_DEF_EN),
+            ("Application order", _F_DEF_ORDER),
+            ("Armor mitigation", _F_DEF_RESIST +
+             "<p>Worn armor is applied outermost&rarr;innermost; a layer is engaged only "
+             "if <code>rng(1,100) &le; coverage</code>. Bash damage is then scaled by "
+             "&times;1.4 (LIGHT_BONES) or &times;1.8 (HOLLOW_BONES). Monsters use their "
+             "per-type <code>armor_*</code> plus worn and bonuses as the resist.</p>"),
+        ],
+        "melee_cost": [
+            ("In plain terms", _I_COST_EN),
+            ("Attack moves", "<p>100 moves = 1 second at speed 100, so attack time "
+             "&asymp; moves / speed.</p>" + _F_COST),
+            ("Stumble & stamina", _F_STUMBLE),
+        ],
+        "ranged": [
+            ("In plain terms", _I_RANGED_EN),
+            ("Dispersion (MoA)", _F_DISP),
+            ("Dispersion from skill", _F_DISP_SKILL),
+            ("Recoil & aim", _F_AIM),
+            ("Projectile aim & dodge", _F_PROJ),
+            ("Damage severity & hit location", _F_SEV),
+        ],
+        "monster": [
+            ("In plain terms", _I_MON_EN),
+            ("Monster melee", _F_MON),
+        ],
+    },
+    "ko": {
+        "rng": [
+            ("출처", "<p>이 공식들은 설치 빌드가 만들어진 커밋(<code>VERSION.txt</code>)의 "
+             "Cataclysm: Bright Nights C++ 엔진에서 직접 가져온 것입니다. JSON 데이터가 "
+             "아니라 엔진 동작이라 모드로 바뀌지 않습니다. 정확한 <code>파일:줄</code> 참조는 "
+             "<code>docs/combat-formulas.md</code>에 있습니다.</p>"),
+            ("주사위·난수 굴림", _F_DICE),
+            ("기하·상수", _F_CONST),
+        ],
+        "melee_hit": [
+            ("쉬운 설명", _I_HIT_KO),
+            ("명중치(to-hit)", _F_TOHIT),
+            ("명중 굴림·회피·여유치",
+             _F_HITROLL + "<p>굴린 명중치가 대상의 (5배) 회피치 + 크기 페널티를 넘으면 "
+             "명중합니다.</p>"),
+            ("&#9888; 명중 굴림 표준편차 불일치",
+             "<p>상수 <code>accuracy_roll_stddev = 5.0</code>이 일관되지 않게 쓰입니다. "
+             "<b>실제</b> 굴림을 만드는 함수는 이 값을 제곱해 표준편차로 넘깁니다:</p>" + _F_DISC_A +
+             "<p>그러나 AI·표시용 추정 함수 <code>hit_chance</code>는 표준편차 5를 "
+             "가정합니다:</p>" + _F_DISC_B +
+             "<p><code>normal_roll</code>의 둘째 인자가 바로 표준편차이므로, 실제 굴림은 "
+             "추정이 가정한 것보다 5배 넓습니다. <code>m = hit - dodge</code>로 두면:</p>" +
+             _F_DISC_P +
+             "<p>즉 명중치 1점의 가치가 추정의 1/5이라 근접전이 훨씬 운빨입니다. "
+             "<code>hit_chance</code>는 NPC AI에서만 쓰이고 실제 판정에는 쓰이지 않으므로, "
+             "플레이어가 실제로 겪는 것은 &sigma;=25 열입니다:</p>" + _F_DISC_TBL),
+        ],
+        "melee_crit": [
+            ("쉬운 설명", _I_CRIT_KO),
+            ("치명타 확률", "<p>세 독립 확률(무기·능력치·스킬)을 합성합니다. "
+             "&quot;triple&quot;은 무조건 치명타이고, &quot;double&quot; 항은 명중 굴림이 "
+             "회피를 확실히 넘을 때만 더해집니다.</p>" + _F_CRIT),
+        ],
+        "melee_dmg": [
+            ("쉬운 설명", _I_DMG_KO),
+            ("타격(Bash)", _F_BASH),
+            ("베기(Cut)", _F_CUT),
+            ("관통(Stab)", _F_STAB),
+            ("전체 인스턴스 보정", "<p>굴린 피해 인스턴스에 명중 직전 적용됩니다:</p>" + _F_DMG_INST),
+        ],
+        "defense": [
+            ("쉬운 설명", _I_DEF_KO),
+            ("적용 순서", _F_DEF_ORDER),
+            ("방어구 경감", _F_DEF_RESIST +
+             "<p>착용 방어구는 겉&rarr;속 순으로 적용되며, 각 레이어는 "
+             "<code>rng(1,100) &le; 범위(coverage)</code>일 때만 작동합니다. 이후 타격 "
+             "피해는 &times;1.4(LIGHT_BONES)/&times;1.8(HOLLOW_BONES)로 곱해집니다. 몬스터는 "
+             "타입별 <code>armor_*</code> + 착용 + 보너스를 저항으로 씁니다.</p>"),
+        ],
+        "melee_cost": [
+            ("쉬운 설명", _I_COST_KO),
+            ("공격 행동력", "<p>speed 100에서 100행동력 = 1초, 즉 공격 시간 &asymp; 행동력 / "
+             "speed.</p>" + _F_COST),
+            ("휘청임·스태미나", _F_STUMBLE),
+        ],
+        "ranged": [
+            ("쉬운 설명", _I_RANGED_KO),
+            ("분산(MoA)", _F_DISP),
+            ("스킬에 의한 분산", _F_DISP_SKILL),
+            ("반동·조준", _F_AIM),
+            ("발사체 조준·회피", _F_PROJ),
+            ("피해 배수(severity)·부위", _F_SEV),
+        ],
+        "monster": [
+            ("쉬운 설명", _I_MON_KO),
+            ("몬스터 근접", _F_MON),
+        ],
+    },
+}
+
+
+def mech_topic_title(topic, lang):
+    for tid, names in MECH_TOPICS:
+        if tid == topic:
+            return names.get(lang) or names["en"]
+    return topic
+
+
+def mech_sections(lang, topic):
+    """The (heading, body) sections for a mechanics topic, English-fallback."""
+    if topic == "basics":
+        return MECH_DOC.get(lang) or MECH_DOC["en"]
+    by_lang = COMBAT_DOC.get(lang) or {}
+    return by_lang.get(topic) or COMBAT_DOC["en"].get(topic, [])
 

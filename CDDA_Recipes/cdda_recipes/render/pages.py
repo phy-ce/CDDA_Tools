@@ -2,7 +2,8 @@ from urllib.parse import quote
 
 from ..state import get_index, get_translator
 from ..config import SETTINGS, BROWSE_BY_ROUTE, BROWSE_BY_TYPE
-from ..i18n import T, CAT_NAMES, cat_name, MECH_DOC
+from ..i18n import (T, itemcat_name, MECH_TOPICS, mech_sections,
+                    mech_topic_title)
 from ..htmlutil import (h, a_group, a_item, a_monster, item_url, flag_url,
                         monster_url, skill_url, quality_url, entity_url, pct_html,
                         _more_chips, _more_list)
@@ -25,65 +26,20 @@ _MON_SHOWN = {
 def render_landing(ctx):
     idx = get_index(ctx["ver"], ctx["mods"])
     idx.tr = get_translator(ctx["ver"], ctx["lang"])
-    order = list(CAT_NAMES.keys())
-    cats = sorted(idx.by_cat.keys(), key=lambda c: (order.index(c) if c in order else 99, c))
-    cards = []
-    for c in cats:
-        cards.append('<a class="catcard" href="/?cat=%s&ver=%d&lang=%s%s">'
+    qsuf = "ver=%d&lang=%s%s" % (ctx["ver"], h(ctx["lang"]), "&mods=1" if ctx["mods"] else "")
+    cats = idx.item_categories()
+    # "All items" first, then each item_category by item count (biggest first)
+    cards = ['<a class="catcard" href="/items?%s"><b>%s</b><br><span>%s</span></a>'
+             % (qsuf, h(T(ctx, "all_items")), h(T(ctx, "items_n", n=len(idx.item_ids))))]
+    for c, ids in sorted(cats.items(),
+                         key=lambda kv: (-len(kv[1]), itemcat_name(kv[0], ctx["lang"]).lower())):
+        cards.append('<a class="catcard" href="/items?cat=%s&%s">'
                      '<b>%s</b><br><span>%s</span></a>'
-                     % (quote(c), ctx["ver"], h(ctx["lang"]), "&mods=1" if ctx["mods"] else "",
-                        h(cat_name(c, ctx["lang"])), h(T(ctx, "items_n", n=len(idx.by_cat[c])))))
+                     % (quote(c), qsuf, h(itemcat_name(c, ctx["lang"])),
+                        h(T(ctx, "items_n", n=len(ids)))))
     body = ('<p class="hint">%s</p><div class="catgrid">%s</div>'
             % (h(T(ctx, "browse_hint")), "".join(cards)))
     return page(T(ctx, "brand"), body, ctx, nav="items")
-
-
-
-def render_category(ctx, cat, skill, maxlv):
-    idx = get_index(ctx["ver"], ctx["mods"])
-    idx.tr = get_translator(ctx["ver"], ctx["lang"])
-    ids = idx.by_cat.get(cat, [])
-    rows = []
-    skills = set()
-    for rid in ids:
-        lv, sk = _item_level(idx, rid)
-        if sk:
-            skills.add(sk)
-        rows.append((idx.name(rid), rid, lv, sk))
-    if skill:
-        rows = [r for r in rows if r[3] == skill]
-    if maxlv is not None:
-        rows = [r for r in rows if r[2] <= maxlv]
-    rows.sort(key=lambda r: (r[2], r[0].lower()))
-
-    skopts = '<option value="">%s</option>' % h(T(ctx, "all_skills"))
-    for sk in sorted(skills, key=lambda s: idx.name(s).lower()):
-        skopts += '<option value="%s"%s>%s</option>' % (
-            h(sk), " selected" if sk == skill else "", h(idx.name(sk)))
-    base = 'ver=%d&lang=%s%s' % (ctx["ver"], h(ctx["lang"]), "&mods=1" if ctx["mods"] else "")
-    filters = (
-        '<form class="filters" method="get" action="/">'
-        '<input type=hidden name="cat" value="%s">'
-        '<input type=hidden name="ver" value="%d"><input type=hidden name="lang" value="%s">%s'
-        '<select name="skill" onchange="this.form.submit()">%s</select>'
-        '<input type=number name="maxlv" min="0" placeholder="%s" value="%s" '
-        'style="width:6em" onchange="this.form.submit()">'
-        '</form>'
-        % (h(cat), ctx["ver"], h(ctx["lang"]),
-           '<input type=hidden name="mods" value="1">' if ctx["mods"] else "",
-           skopts, h(T(ctx, "max_lv")), "" if maxlv is None else h(maxlv)))
-
-    trs = "".join(
-        '<tr><td><a class="item" href="%s">%s</a></td><td>%s</td><td class="lv">%s</td></tr>'
-        % (item_url(rid, ctx), h(name), h(idx.name(sk)) if sk else "", lv)
-        for name, rid, lv, sk in rows)
-    table = ('<table class="cat"><tr><th>%s</th><th>%s</th><th class="lv">%s</th></tr>%s</table>'
-             % (h(T(ctx, "item_col")), h(T(ctx, "skill")), h(T(ctx, "lv")), trs))
-    head = ('<a class="item" href="/?%s">%s</a><h1 class="item">%s <span class="idtag">(%s)</span></h1>'
-            % (base, h(T(ctx, "all_cats")), h(cat_name(cat, ctx["lang"])),
-               h(T(ctx, "items_n", n=len(rows)))))
-    return page("%s — CDDA Recipes" % cat_name(cat, ctx["lang"]),
-                head + filters + table, ctx, nav="items")
 
 
 
@@ -233,11 +189,26 @@ def render_entity(ctx, eid):
     return page("%s — CDDA Recipes" % name, "".join(parts), ctx, nav=nav)
 
 
-def render_mechanics(ctx):
-    doc = MECH_DOC.get(ctx["lang"]) or MECH_DOC["en"]
-    secs = "".join("<h2>%s</h2>%s" % (h(head), body) for head, body in doc)
-    body = ('<h1 class="item">%s</h1><div class="mech">%s</div>'
-            % (h(T(ctx, "mech_title")), secs))
+def render_mechanics(ctx, topic=""):
+    lang = ctx["lang"]
+    base = 'ver=%d&lang=%s%s' % (ctx["ver"], h(ctx["lang"]),
+                                 "&mods=1" if ctx["mods"] else "")
+    secs = mech_sections(lang, topic) if topic else None
+    if secs:
+        title = mech_topic_title(topic, lang)
+        inner = "".join("<h2>%s</h2>%s" % (h(head), body) for head, body in secs)
+        body = ('<a class="item" href="/mechanics?%s">%s</a>'
+                '<h1 class="item">%s</h1><div class="mech">%s</div>'
+                % (base, h(T(ctx, "mech_back")), h(title), inner))
+        return page("%s — %s" % (title, T(ctx, "mech_title")), body, ctx, nav="mechanics")
+
+    # topic list (landing)
+    cards = []
+    for tid, names in MECH_TOPICS:
+        cards.append('<a class="catcard" href="/mechanics?topic=%s&%s"><b>%s</b></a>'
+                     % (quote(tid), base, h(names.get(lang) or names["en"])))
+    body = ('<h1 class="item">%s</h1><p class="hint">%s</p><div class="catgrid">%s</div>'
+            % (h(T(ctx, "mech_title")), h(T(ctx, "mech_pick")), "".join(cards)))
     return page(T(ctx, "mech_title"), body, ctx, nav="mechanics")
 
 

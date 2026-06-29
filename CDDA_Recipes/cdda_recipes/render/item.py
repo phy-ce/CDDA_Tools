@@ -3,14 +3,16 @@ from ..i18n import T
 from ..htmlutil import (h, a_skill, a_monster, a_group, item_url, pct_html,
                         _more_chips)
 from ..assets import page
-from .common import (_stats_html, _abilities_html, recipe_html, group_html,
-                     _resolved, raw_fields_html, picture_html, tile_html)
+from .common import (_stats_html, _abilities_html, _armor_html, recipe_html,
+                     group_html, _resolved, raw_fields_html, picture_html, tile_html)
 
 # item fields already surfaced by the curated sections above (everything else
 # lands in the "all JSON fields" box so nothing is omitted)
 _ITEM_SHOWN = {"weight", "volume", "material", "to_hit", "bashing", "cutting",
                "flags", "qualities", "techniques", "use_action", "category",
-               "symbol", "color", "skill", "max_level", "required_level"}
+               "symbol", "color", "skill", "max_level", "required_level",
+               "material_thickness", "environmental_protection", "coverage",
+               "encumbrance", "warmth", "covers"}
 
 # the game auto-assigns an item_category by type when none is set
 _TYPE_CAT = {"GUN": "guns", "GUNMOD": "mods", "MAGAZINE": "magazines", "AMMO": "ammo",
@@ -37,6 +39,7 @@ def render_item(ctx):
         parts.append('<div class="desc">%s</div>' % h(desc))
     parts.append(picture_html(idx, ctx, rid))
     parts.append(_stats_html(idx, ctx, rid))
+    parts.append(_armor_html(idx, ctx, rid))
     parts.append(_abilities_html(idx, ctx, rid))
 
     recipes = idx.by_result.get(rid, [])
@@ -131,6 +134,13 @@ def render_item(ctx):
                         for u in users)
         parts.append('<div class="section">%s</div><div class="chips">%s</div>'
                      % (h(T(ctx, "used_in", n=len(users))), chips))
+
+    tusers = sorted(idx.recipes_using_tool(rid), key=lambda x: idx.name(x).lower())
+    if tusers:
+        chips = ['<a class="chip" href="%s">%s</a>' % (item_url(u, ctx), h(idx.name(u)))
+                 for u in tusers]
+        parts.append('<div class="section">%s</div>%s'
+                     % (h(T(ctx, "tool_used_in", n=len(tusers))), _more_chips(chips, 80)))
 
     parts.append(raw_fields_html(idx, ctx, rid, _ITEM_SHOWN))
     return page("%s — CDDA Recipes" % title, "".join(parts), ctx, nav="items")

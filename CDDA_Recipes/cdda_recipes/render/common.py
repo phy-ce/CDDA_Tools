@@ -340,6 +340,48 @@ def _abilities_html(idx, ctx, rid):
 
 
 
+def _armor_html(idx, ctx, rid):
+    """Derived armor protection (physical + environmental) and fit stats, for an
+    armor item. Values come from DataIndex.armor_protection (engine formula)."""
+    ar = idx.armor_protection(rid)
+    if not ar:
+        return ""
+    res = _resolved(idx, rid)
+
+    def field(label, value_html):
+        return ('<div class="f"><span class="k">%s</span><span class="v">%s</span></div>'
+                % (h(label), value_html))
+
+    def seg(pairs):
+        return "  ·  ".join('%s <b>%s</b>' % (h(T(ctx, k)), h(ar[key])) for k, key in pairs)
+
+    rows = [field(T(ctx, "arm_phys"),
+                  seg([("dmg_bash", "bash"), ("dmg_cut", "cut"),
+                       ("dmg_stab", "stab"), ("dmg_bullet", "bullet")])),
+            field(T(ctx, "arm_env"),
+                  '%s  ·  %s <b>%s</b>'
+                  % (seg([("dmg_acid", "acid"), ("dmg_fire", "fire")]),
+                     h(T(ctx, "col_env")), h(ar["env"])))]
+
+    fit = []
+    for label, val in ((T(ctx, "col_cov"), res.get("coverage")),
+                       (T(ctx, "col_enc"), res.get("encumbrance")),
+                       (T(ctx, "col_warmth"), res.get("warmth")),
+                       (T(ctx, "col_thick"), res.get("material_thickness"))):
+        if isinstance(val, (int, float)):
+            fit.append("%s <b>%s</b>" % (h(label), h(val)))
+    if fit:
+        rows.append(field(T(ctx, "arm_fit"), "  ·  ".join(fit)))
+
+    covers = res.get("covers")
+    if isinstance(covers, list) and covers:
+        rows.append(field(T(ctx, "covers"),
+                          ", ".join(h(idx.name(c)) for c in covers if isinstance(c, str))))
+
+    return ('<div class="recipe"><div class="rtitle">🛡 %s</div>%s</div>'
+            % (h(T(ctx, "protection_label")), "".join(rows)))
+
+
 def _item_level(idx, rid):
     """Lowest crafting difficulty across this item's recipes, and the skill."""
     recs = idx.by_result.get(rid, [])

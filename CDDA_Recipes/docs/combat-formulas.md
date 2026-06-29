@@ -491,6 +491,36 @@ size_bonus: tiny −7, small −3, medium 0, large +5, huge +10
 
 ---
 
+## 3.5 방어구 아이템 보호치 (재질 기반, `item.cpp`)
+
+장비 아이템의 방어치는 JSON에 직접 저장되지 않고 **재질(material)의 저항값 ×
+두께(`material_thickness`)** 로 산출된다. 손상 0·의류 보정(`clothing_mod`) 0 인
+새 아이템 기준:
+
+```text
+phys_resist (item.cpp:7034, 물리계 공통 템플릿):
+    resist = Σ_재질 mat.<X>_resist / 재질수            # 재질 단순 평균
+    값      = round( resist · thickness )              # thickness = get_thickness()
+
+bash    (item.cpp:7081) = round( avg(bash_resist)   · thickness )
+cut     (item.cpp:7086) = round( avg(cut_resist)    · thickness )
+stab    (item.cpp:7095) = int( 0.8 · cut )           # cut(정수)에 0.8, 버림
+bullet  (item.cpp:7101) = round( avg(bullet_resist) · thickness )
+
+acid    (item.cpp:7107) = round( avg(acid_resist) · env_scale )
+fire    (item.cpp:7147) = round( avg(fire_resist) · env_scale )
+    env      = get_env_resist()      = environmental_protection (item.cpp:6670)
+    env_scale = (env ≥ 10) ? 1 : env/10              # 환경보호 낮으면 침투
+```
+
+`thickness` = `get_thickness()` (item.cpp:6895) = 방어구 슬롯의 `material_thickness`.
+재질 저항값은 `data/json/materials.json` 의 `*_resist` 필드. 검증: `boots_steel`
+(steel+leather, thickness 3, env 3) → bash `round((6+2)/2·3)=12`, bullet
+`round((5+2)/2·3)=10`, acid `round((7+4)/2·0.3)=2` — 게임 내 표기와 일치.
+
+이 식은 `dataindex.DataIndex.armor_protection()` 에 구현되어 아이템 페이지의 방어
+박스와 아이템 표의 🛡 열을 채운다.
+
 ## 4. 요약 치트시트
 
 | 항목 | 핵심 식 |
@@ -507,6 +537,8 @@ size_bonus: tiny −7, small −3, medium 0, large +5, huge +10
 | 빗나간 거리 | `2·range·sin(dispersion/2) / target_size` |
 | 발사 명중도 | `goodhit = missed_by + dodge_roll/dice(10,speed)` |
 | 발사 피해배수 | goodhit 0.2/0.5/0.8 경계로 1.5 / (1.766−4g/3) / (1.6−g) / 4(1−g) |
+| 방어구 물리저항 | `round( avg(재질 *_resist) · 두께 )`, stab=`int(0.8·cut)` |
+| 방어구 환경저항 | `round( avg(재질 acid/fire_resist) · (env≥10?1:env/10) )` |
 
 ---
 

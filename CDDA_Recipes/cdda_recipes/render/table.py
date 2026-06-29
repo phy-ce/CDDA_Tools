@@ -43,6 +43,7 @@ def _attrs(idx, iid):
         "healthy": _num(r.get("healthy")), "fun": _num(r.get("fun")),
         "range": _num(r.get("range")), "disp": _num(r.get("dispersion")),
         "quals": dict(idx.qualities_of(iid)),
+        "armor": idx.armor_protection(iid),
     }
 
 
@@ -70,6 +71,25 @@ def _stat_col(label, key, fmt):
     return {"label": label, "numeric": True, "cell": cell}
 
 
+def _armor_col(ctx, dmgkey, key):
+    """A derived armor-resistance column (value pulled from a['armor'])."""
+    label = "🛡 " + T(ctx, dmgkey)
+
+    def cell(idx, ctx, iid, a):
+        ar = a.get("armor")
+        v = ar.get(key) if ar else None
+        return ("", "") if v is None else ("%s" % v, h(_f_int(v)))
+    return {"label": label, "numeric": True, "cell": cell}
+
+
+def _armor_env_col(ctx):
+    def cell(idx, ctx, iid, a):
+        ar = a.get("armor")
+        v = ar.get("env") if ar else None
+        return ("", "") if v is None else ("%s" % v, h(_f_int(v)))
+    return {"label": T(ctx, "col_env"), "numeric": True, "cell": cell}
+
+
 def _qual_col(ctx, qid, qname):
     def cell(idx, ctx, iid, a):
         lv = a["quals"].get(qid)
@@ -77,18 +97,27 @@ def _qual_col(ctx, qid, qname):
     return {"label": T(ctx, "qual_lv", q=qname), "numeric": True, "cell": cell}
 
 
-def _base_cols(ctx):
-    return [_name_col(ctx), _type_col(ctx),
+def _base_cols(ctx, typ=None):
+    cols = [_name_col(ctx), _type_col(ctx),
             _stat_col(T(ctx, "weight"), "weight", _f_weight),
-            _stat_col(T(ctx, "volume"), "volume", _f_vol),
-            _stat_col(T(ctx, "col_bash"), "bash", _f_int),
-            _stat_col(T(ctx, "col_cut"), "cut", _f_int),
-            _stat_col(T(ctx, "col_tohit"), "tohit", _f_int)]
+            _stat_col(T(ctx, "volume"), "volume", _f_vol)]
+    # melee attack columns are noise on an armor table — only show them elsewhere
+    if typ not in ARMOR_TYPES:
+        cols += [_stat_col(T(ctx, "col_bash"), "bash", _f_int),
+                 _stat_col(T(ctx, "col_cut"), "cut", _f_int),
+                 _stat_col(T(ctx, "col_tohit"), "tohit", _f_int)]
+    return cols
 
 
 def _extra_cols(ctx, typ):
     if typ in ARMOR_TYPES:
-        return [_stat_col(T(ctx, "col_enc"), "enc", _f_int),
+        return [_armor_col(ctx, "dmg_bash", "bash"),
+                _armor_col(ctx, "dmg_cut", "cut"),
+                _armor_col(ctx, "dmg_bullet", "bullet"),
+                _armor_col(ctx, "dmg_acid", "acid"),
+                _armor_col(ctx, "dmg_fire", "fire"),
+                _armor_env_col(ctx),
+                _stat_col(T(ctx, "col_enc"), "enc", _f_int),
                 _stat_col(T(ctx, "col_cov"), "cov", _f_int),
                 _stat_col(T(ctx, "col_warmth"), "warmth", _f_int),
                 _stat_col(T(ctx, "col_thick"), "thick", _f_int)]
@@ -161,7 +190,8 @@ def render_items_table(ctx, cat, qual):
     else:
         cat, ids, title = "", list(idx.item_ids), T(ctx, "all_items")
     # type-specific stat columns follow the category's dominant item type
-    cols = _base_cols(ctx) + _extra_cols(ctx, _dominant_type(idx, ids))
+    dom = _dominant_type(idx, ids)
+    cols = _base_cols(ctx, dom) + _extra_cols(ctx, dom)
     if qual and qual in idx.quals:
         cols.append(_qual_col(ctx, qual, idx.tr(idx.quals[qual])))
     else:

@@ -128,7 +128,22 @@ note this in commits or comments — just keep the code original.
   (resolved via copy-from) else `config.TYPE_CAT` by type; built lazily by
   `DataIndex.item_category()` / `item_categories()`. Type-specific stat columns
   (armor / food / gun) follow the category's dominant item type. There is no
-  separate "item table" page — this *is* the merged Items view.
+  separate "item table" page — this *is* the merged Items view. On an
+  armor-dominant table the melee attack columns (bash/cut/to-hit) are dropped as
+  noise; they stay for weapons/tools/guns.
+- **Armor protection is derived, not stored:** items hold no resist fields — the
+  engine computes them from `material` resist × `material_thickness` (acid/fire
+  scaled by `environmental_protection`). `DataIndex.armor_protection()` replays
+  the BN `item.cpp` formula (see `docs/combat-formulas.md` §3.5, pinned to the
+  build sha); it feeds both the item page's 🛡 protection box and the item
+  table's 🛡 columns. Reuse the curated `dmg_*` damage-type labels for the
+  resist columns.
+- **Reverse tool/quality recipe lookup:** besides `used_in` (item consumed as a
+  component), the index also reverses recipe *tools* and *qualities* —
+  `DataIndex.recipes_using_tool(iid)` (direct tool + any quality the item
+  provides) drives the item page's "used as a tool" section, and
+  `recipes_requiring_quality(qid)` drives the quality page. Both expand `using`
+  requirement references.
 - **Mechanics (`/mechanics`)** is topic-based: a topic grid, then one topic via
   `?topic=<id>`. `MECH_TOPICS` (order + 3-lang titles), `MECH_DOC` (the "basics"
   topic), `COMBAT_DOC` (combat topics), resolved by `mech_sections()`. Combat-topic

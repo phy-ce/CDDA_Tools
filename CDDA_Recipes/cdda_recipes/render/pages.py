@@ -274,6 +274,14 @@ def render_quality(ctx, qid):
                  for iid, lv in items]
         parts.append('<div class="section">%s</div>%s'
                      % (h(T(ctx, "quality_items_label", n=len(items))), _more_chips(chips, 80)))
+    recs = sorted(idx.recipes_requiring_quality(qid),
+                  key=lambda rid: (_item_level(idx, rid)[0], idx.name(rid).lower()))
+    if recs:
+        chips = ['<a class="chip" href="%s">%s <span class="locq">%s %s</span></a>'
+                 % (item_url(rid, ctx), h(idx.name(rid)), h(T(ctx, "lv")),
+                    h(_item_level(idx, rid)[0])) for rid in recs]
+        parts.append('<div class="section">%s</div>%s'
+                     % (h(T(ctx, "quality_recipes_label", n=len(recs))), _more_chips(chips, 80)))
     return page("%s — CDDA Recipes" % title, "".join(parts), ctx, nav="qualities")
 
 

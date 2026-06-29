@@ -17,6 +17,8 @@ class DataIndex:
         self.recipes = []
         self.by_result = {}
         self.used_in = {}
+        self.tool_recipes = {}   # tool item id -> set(recipe result id) using it as a tool
+        self.quality_recipes = {}  # tool quality id -> set(recipe result id) requiring it
         self.uncrafts = {}       # item id -> [uncraft entry, ...]
         self.uncraft_from = {}   # yielded item id -> set(source item id) to disassemble
         self.book_recipes = {}   # book id -> [(recipe result, level), ...]
@@ -114,6 +116,11 @@ class DataIndex:
             self.by_result.setdefault(res, []).append(r)
             for iid in self._recipe_component_ids(r):
                 self.used_in.setdefault(iid, set()).add(res)
+            tools, quals = self._recipe_tools_quals(r)
+            for tid in self._tool_item_ids(tools):
+                self.tool_recipes.setdefault(tid, set()).add(res)
+            for qid in self._quality_ids(quals):
+                self.quality_recipes.setdefault(qid, set()).add(res)
             sk = r.get("skill_used")
             if isinstance(sk, str):
                 self.skill_recipes.setdefault(sk, []).append(res)
@@ -446,6 +453,58 @@ class DataIndex:
                     ids.add(iid)
         return ids
 
+    def _recipe_tools_quals(self, recipe, _depth=0):
+        """A recipe's tool groups and quality requirements, with `using`
+        requirements expanded (tools/qualities can be hidden behind a
+        requirement reference such as `forging_standard`)."""
+        tools = list(recipe.get("tools") or [])
+        quals = list(recipe.get("qualities") or [])
+        for use in recipe.get("using") or []:
+            if isinstance(use, list) and use and use[0] in self.reqs and _depth < 3:
+                t2, q2 = self._recipe_tools_quals(self.reqs[use[0]], _depth + 1)
+                tools += t2
+                quals += q2
+        return tools, quals
+
+    @staticmethod
+    def _tool_item_ids(tools):
+        """Item ids referenced as tools (each group is a list of [id, charges]
+        OR-alternatives, or bare id strings)."""
+        ids = set()
+        for group in tools:
+            if not isinstance(group, list):
+                continue
+            for e in group:
+                if isinstance(e, list) and e and isinstance(e[0], str):
+                    ids.add(e[0])
+                elif isinstance(e, str):
+                    ids.add(e)
+        return ids
+
+    @staticmethod
+    def _quality_ids(quals):
+        """Quality ids required (dict `{"id":..,"level":..}` or list `["id",lv]`)."""
+        ids = set()
+        for q in quals:
+            if isinstance(q, dict) and isinstance(q.get("id"), str):
+                ids.add(q["id"])
+            elif isinstance(q, list) and q and isinstance(q[0], str):
+                ids.add(q[0])
+        return ids
+
+    def recipes_using_tool(self, iid):
+        """Recipe results that need this item to craft: directly as a tool, or
+        through any tool quality the item provides (e.g. a forge required as a
+        tool, an anvil required via its ANVIL quality)."""
+        out = set(self.tool_recipes.get(iid, ()))
+        for q, _lv in self.qualities_of(iid):
+            out |= self.quality_recipes.get(q, set())
+        return out
+
+    def recipes_requiring_quality(self, qid):
+        """Recipe results that require this tool quality."""
+        return self.quality_recipes.get(qid, set())
+
     def craftable(self):
         rows = [(self.name(rid), rid) for rid in self.by_result]
         rows.sort(key=lambda x: x[0].lower())
@@ -549,6 +608,60 @@ class DataIndex:
                 for f in (dl.get("flags") or []):
                     flags.discard(f)
         return flags
+
+    _ARMOR_TYPES = ("ARMOR", "TOOL_ARMOR", "PET_ARMOR")
+
+    @staticmethod
+    def _mat_ids(val):
+        """Material ids from an item's `material` (string, list of strings, or
+        list of `{type, portion}` dicts)."""
+        out = []
+        for m in (val if isinstance(val, list) else [val]):
+            if isinstance(m, str):
+                out.append(m)
+            elif isinstance(m, dict) and isinstance(m.get("type"), str):
+                out.append(m["type"])
+        return out
+
+    def _mat_resist(self, mat_id, key):
+        e = self.by_id.get(mat_id)
+        if isinstance(e, dict) and e.get("type") == "material":
+            v = e.get(key)
+            return float(v) if isinstance(v, (int, float)) else 0.0
+        return 0.0
+
+    def armor_protection(self, iid):
+        """Derived armor resistances for an item, following the BN engine
+        formula (item.cpp `phys_resist` / `acid_resist` / `fire_resist`, build
+        sha 426991f): average of each material's *_resist × thickness; stab =
+        0.8·cut; acid/fire scaled by env/10 when env<10. Computed for an
+        undamaged item with no clothing mods. Returns a dict of the resist
+        values (plus env/thickness) or None when the item is not armor.
+
+        See CDDA_Recipes/docs/combat-formulas.md."""
+        merged = {}
+        for e in reversed(self._chain(iid)):
+            if isinstance(e, dict):
+                merged.update(e)
+        if merged.get("type") not in self._ARMOR_TYPES:
+            return None
+        mats = self._mat_ids(merged.get("material"))
+        thick = merged.get("material_thickness")
+        thick = float(thick) if isinstance(thick, (int, float)) else 0.0
+        env = merged.get("environmental_protection") or 0
+        env = float(env) if isinstance(env, (int, float)) else 0.0
+
+        def avg(key):
+            return (sum(self._mat_resist(m, key) for m in mats) / len(mats)) if mats else 0.0
+
+        bash = round(avg("bash_resist") * thick)
+        cut = round(avg("cut_resist") * thick)
+        bullet = round(avg("bullet_resist") * thick)
+        env_scale = 1.0 if env >= 10 else env / 10.0
+        acid = round(avg("acid_resist") * env_scale)
+        fire = round(avg("fire_resist") * env_scale)
+        return {"bash": bash, "cut": cut, "stab": int(0.8 * cut), "bullet": bullet,
+                "acid": acid, "fire": fire, "env": int(env), "thickness": thick}
 
     def qualities_of(self, rid):
         for e in self._chain(rid):

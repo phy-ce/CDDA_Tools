@@ -140,10 +140,17 @@ table.cat th { color: var(--muted); font-weight: 600; font-size: 13px; }
 table.cat td.lv, table.cat th.lv { text-align: right; color: var(--muted); width: 4em; }
 table.cat td.num, table.cat th.num { text-align: right; white-space: nowrap; }
 table.cat tbody tr:hover td { background: var(--hover); }
-/* sortable item table: clickable headers + horizontal scroll on overflow */
-.tablewrap { overflow-x: auto; margin-top: 12px; }
+/* sortable item table: clickable headers, with both-axis scroll inside the box
+   so the header row can stay pinned (a horizontal-scroll ancestor otherwise
+   breaks vertical `position: sticky`). The px floor keeps the box usable even
+   where 100vh is unavailable. */
+.tablewrap { overflow: auto; margin-top: 12px; max-height: max(420px, calc(100vh - 130px)); }
+/* separate borders: `border-collapse: collapse` disables sticky on cells in Chromium */
+table.sortable { border-collapse: separate; border-spacing: 0; }
+table.sortable th, table.sortable td { border-bottom: 1px solid var(--border); }
 table.sortable th { cursor: pointer; user-select: none; white-space: nowrap;
-        position: sticky; top: 53px; background: var(--panel); z-index: 1; }
+        position: sticky; top: 0; background: var(--panel); z-index: 1;
+        box-shadow: inset 0 -1px 0 var(--border); }
 table.sortable th:hover { color: var(--link); }
 table.sortable th .ar { color: var(--link); font-size: 11px; margin-left: 2px; }
 .tfilter { padding: 5px 10px; border: 1px solid var(--border2); border-radius: 7px;

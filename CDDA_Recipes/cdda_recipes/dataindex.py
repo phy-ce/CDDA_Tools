@@ -38,8 +38,6 @@ class DataIndex:
         self._tileset = None     # parsed active tileset (lazy)
         self._tileset_built = False
         self.item_ids = []       # ids whose type is a real item (for search)
-        self.cat_of = {}         # result id -> recipe category code (e.g. CC_WEAPON)
-        self.by_cat = {}         # category code -> [result id, ...]
         self.by_itemcat = {}     # item_category id -> [item id, ...] (lazy)
         self._itemcat_built = False
         self.item_groups_of = {}  # item id -> set(group id) it appears in (direct)
@@ -114,16 +112,12 @@ class DataIndex:
             if not isinstance(res, str):
                 continue
             self.by_result.setdefault(res, []).append(r)
-            if res not in self.cat_of and r.get("category"):
-                self.cat_of[res] = r["category"]
             for iid in self._recipe_component_ids(r):
                 self.used_in.setdefault(iid, set()).add(res)
             sk = r.get("skill_used")
             if isinstance(sk, str):
                 self.skill_recipes.setdefault(sk, []).append(res)
             self._index_book_learn(r, res)
-        for res, cat in self.cat_of.items():
-            self.by_cat.setdefault(cat, []).append(res)
         self.item_ids = [eid for eid, e in self.by_id.items()
                          if isinstance(e, dict) and e.get("type") in ITEM_TYPES]
         for eid, e in self.by_id.items():

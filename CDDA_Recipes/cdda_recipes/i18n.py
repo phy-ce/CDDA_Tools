@@ -413,28 +413,6 @@ def T(ctx, key, **kw):
 
 
 
-# recipe category codes -> readable names. Order = how they're listed.
-CAT_NAMES = {
-    "CC_WEAPON": {"en": "Weapons", "ko": "무기", "ja": "武器"},
-    "CC_AMMO": {"en": "Ammo", "ko": "탄약", "ja": "弾薬"},
-    "CC_ARMOR": {"en": "Armor / Clothing", "ko": "방어구 / 의류", "ja": "防具 / 衣類"},
-    "CC_FOOD": {"en": "Food & Drink", "ko": "음식 / 음료", "ja": "食料 / 飲料"},
-    "CC_CHEM": {"en": "Chemistry", "ko": "화학", "ja": "化学"},
-    "CC_ELECTRONIC": {"en": "Electronics", "ko": "전자기기", "ja": "電子機器"},
-    "CC_ANIMALS": {"en": "Animals", "ko": "동물", "ja": "動物"},
-    "CC_OTHER": {"en": "Other", "ko": "기타", "ja": "その他"},
-}
-
-
-
-def cat_name(code, lang):
-    d = CAT_NAMES.get(code)
-    if not d:
-        return code.replace("CC_", "").replace("_", " ").title()
-    return d.get(lang) or d["en"]
-
-
-
 # json item "type" -> readable name, for the item-table type filter.
 TYPE_NAMES = {
     "GENERIC": {"en": "Generic", "ko": "일반", "ja": "汎用"},

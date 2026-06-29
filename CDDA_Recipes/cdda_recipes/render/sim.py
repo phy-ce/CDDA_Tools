@@ -221,11 +221,14 @@ def _melee_sim(p):
     hits = crits = 0
     swings = []
     for _ in range(_TRIALS):
-        if rng.gauss(hit_val * 5.0, 25.0) - tdodge5 - size_pen < 0:
+        # one hit roll, reused for both the hit/miss test and the crit high-roll
+        # bonus (engine: Character::melee_attack rolls hit_roll once, melee.cpp)
+        hit_roll = rng.gauss(hit_val * 5.0, 25.0)
+        if hit_roll - tdodge5 - size_pen < 0:
             swings.append(0)
             continue
         hits += 1
-        crit = rng.random() < _crit_chance(p, rng.gauss(hit_val * 5.0, 25.0), tdodge5)
+        crit = rng.random() < _crit_chance(p, hit_roll, tdodge5)
         crits += crit
         swings.append(_resolve_dmg(_roll_units(rng, p, crit)))
     avg_swing = sum(swings) / len(swings)
